@@ -34,7 +34,7 @@ end
 
 prompt("Hi #{name}")
 
-loop do #main loop
+loop do # main loop
   num = ''
   loop do
     prompt("Pick a number")
@@ -91,8 +91,7 @@ loop do #main loop
               num.to_i * num2.to_i
             when "4"
               num.to_f / num2.to_f
-  end
-
+            end
 
   prompt(result)
 
@@ -102,5 +101,3 @@ loop do #main loop
 end
 
 prompt("Thank you for using the calculator. Good Bye!")
-
-
