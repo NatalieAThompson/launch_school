@@ -1,25 +1,19 @@
-VALID_CHOICES = ['rock', 'paper', 'scissors']
+VALID_CHOICES = %w(rock paper scissors)
 
 def prompt(message)
   puts("=> #{message}")
 end
 
-def won?(player, computer)
-  (player == 'rock' && computer == 'scissors') ||
-  (player == 'paper' && computer == 'rock') ||
-  (player == 'scissors' && computer == 'paper')
-end
-
-def lost?(player, computer)
-  (player == 'rock' && computer == 'paper') ||
-  (player == 'paper' && computer == 'scissors') ||
-  (player == 'scissors' && computer == 'rock')
+def won?(player1, player2)
+  (player1 == 'rock' && player2 == 'scissors') ||
+  (player1 == 'paper' && player2 == 'rock') ||
+  (player1 == 'scissors' && player2 == 'paper')
 end
 
 def display_results(player, computer)
   if won?(player, computer)
     prompt("You won!")
-  elsif lost?(player, computer)
+  elsif won?(computer, player)
     prompt("Computer won!")
   else
     prompt("It's a tie!")
