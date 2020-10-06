@@ -2,6 +2,11 @@ def prompt(str)
   puts("~> #{str}")
 end
 
+def clear_screen
+  system 'clear'
+  system 'cls'
+end
+
 def valid_number?(num)
   num.match?(/^\d+\.?\d*$/)
 end
@@ -26,54 +31,61 @@ def duration_to_months(str)
   end
 end
 
-prompt "Welcome to a monthly payment calculator!"
-prompt "----------------------------------------"
+def print_welcome_message
+  prompt "Welcome to a monthly payment calculator!"
+  prompt "----------------------------------------"
+end
 
-loop do
+def get_loan_amount
   prompt "What is the total amount due on your loan?"
-  principle = ''
 
   loop do
     principle = gets.chomp
 
     if valid_number?(principle)
-      break
+      return principle
     else
       prompt "Please enter a positive number and don't include commas."
     end
   end
+end
 
+def get_apr
   prompt "What is your APR (Annual Percentage Rate)? Write only the number."
-  apr = ''
 
   loop do
     apr = gets.chomp
 
     if valid_number?(apr)
-      break
+      return apr
     else
       prompt "Please enter a valid APR and don't include the percent sign"
     end
   end
+end
 
-  mpr = (apr.to_f / 100) / 12.0
-
-  prompt "What is the duration of the loan? Please specify years and/or months."
-  months = 0
+def get_time_on_loan
+  prompt "What is the duration of the loan?"
+  prompt "example: 5 years 3 months or 5y3m"
 
   loop do
     duration = gets.chomp
 
     if duration_to_months(duration)
-      months = duration_to_months(duration)
-      break
+      return duration_to_months(duration)
     else
       prompt "Please enter a number of years and/or months."
     end
   end
+end
 
-  monthly_payments = principle.to_f * (mpr / (1 - (1 + mpr)**-months))
+def compute_result(principle, apr, months)
+  mpr = (apr.to_f / 100) / 12.0
 
+  principle.to_f * (mpr / (1 - (1 + mpr)**-months))
+end
+
+def display_result(principle, apr, months, monthly_payments)
   prompt ""
   prompt "Based on the information you provided"
   prompt "Principle: #{principle}"
@@ -82,8 +94,26 @@ loop do
   prompt ""
   prompt "Your monthly payment would be: $#{monthly_payments.round(2)}"
   prompt "--------------------------------------"
+end
+
+def play_again?
   prompt "Would you like to find the monthly payment for another loan? (Y/N)"
   again = gets.chomp
 
-  break unless again.downcase.start_with?('y')
+  again.downcase.start_with?('y')
 end
+
+print_welcome_message
+
+loop do
+  principle = get_loan_amount
+  apr = get_apr
+  months = get_time_on_loan
+  monthly_payments = compute_result(principle, apr, months)
+  display_result(principle, apr, months, monthly_payments)
+
+  break unless play_again?
+  clear_screen
+end
+
+clear_screen
