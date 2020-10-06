@@ -48,8 +48,8 @@ def get_user_choice
 
     if CHOICE_ABBREVIATION.include?(choice)
       return VALID_CHOICES[CHOICE_ABBREVIATION.index(choice)]
-    elsif VALID_CHOICES.include?(choice)
-      return choice
+    elsif VALID_CHOICES.include?(choice.downcase)
+      return choice.downcase
     else
       prompt("That's not a valid choice.")
     end
@@ -65,12 +65,20 @@ def keep_score(player1, player2)
 end
 
 def play_again?
-  answer = gets.chomp
-  answer.downcase.start_with?('y')
+  loop do
+    answer = gets.chomp
+    if answer.downcase.start_with?('y')
+      return true
+    elsif answer.downcase.start_with?('n')
+      return false
+    else
+      prompt "Enter Y or N"
+    end
+  end
 end
 
 def display_scores(username, player_score, computer_score)
-  prompt("#{username}: #{player_score} | Computer: #{computer_score}.")
+  prompt("#{username}: #{player_score} | Computer: #{computer_score}")
 end
 
 def display_winning_losing(player_score)
