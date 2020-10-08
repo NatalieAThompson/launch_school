@@ -7,8 +7,7 @@ WHAT_BEATS_WHAT = { 'rock' => ['scissors', 'lizard'],
                     'spock' => ['rock', 'scissors'] }
 
 def clear_screen
-  system 'clear'
-  system 'cls'
+  system('clear') || system('cls')
 end
 
 def prompt(message)
@@ -26,10 +25,20 @@ def won?(player1, player2)
   WHAT_BEATS_WHAT[player1].include?(player2)
 end
 
-def display_results(player, computer)
-  if won?(player, computer)
+def winner(player1, player2)
+  if won?(player1, player2)
+    'player'
+  elsif won?(player2, player1)
+    'computer'
+  else
+    'no one'
+  end
+end
+
+def display_results(who_won)
+  if who_won == 'player'
     prompt("You won!")
-  elsif won?(computer, player)
+  elsif who_won == 'computer'
     prompt("Computer won!")
   else
     prompt("It's a tie!")
@@ -44,12 +53,12 @@ def get_user_choice
   puts ""
 
   loop do
-    choice = gets.chomp
+    choice = gets.chomp.downcase
 
     if CHOICE_ABBREVIATION.include?(choice)
       return VALID_CHOICES[CHOICE_ABBREVIATION.index(choice)]
-    elsif VALID_CHOICES.include?(choice.downcase)
-      return choice.downcase
+    elsif VALID_CHOICES.include?(choice)
+      return choice
     else
       prompt("That's not a valid choice.")
     end
@@ -60,16 +69,18 @@ def display_choices(choice, computer_choice)
   prompt "You chose: #{choice}; Computer chose: #{computer_choice}"
 end
 
+=begin
 def keep_score(player1, player2)
   won?(player1, player2) ? 1 : 0
 end
+=end
 
 def play_again?
   loop do
     answer = gets.chomp
-    if answer.downcase.start_with?('y')
+    if answer.downcase == 'y'
       return true
-    elsif answer.downcase.start_with?('n')
+    elsif answer.downcase == 'n'
       return false
     else
       prompt "Enter Y or N"
@@ -89,8 +100,21 @@ def display_winning_losing(player_score)
   end
 end
 
+def valid_username
+  loop do
+    username = gets.chomp
+
+    if !username.delete(' ').empty?
+      return username
+    else
+      puts "Don't leave the username blank."
+    end
+  end
+end
+
+clear_screen
 display_welcome
-username = gets.chomp
+username = valid_username
 
 loop do
   player_score = 0
@@ -101,9 +125,13 @@ loop do
     choice = get_user_choice
     computer_choice = VALID_CHOICES.sample
     display_choices(choice, computer_choice)
-    display_results(choice, computer_choice)
-    player_score += keep_score(choice, computer_choice)
-    computer_score += keep_score(computer_choice, choice)
+    who_won = winner(choice, computer_choice)
+    display_results(who_won)
+    if who_won == 'player'
+      player_score += 1
+    elsif who_won == 'computer'
+      computer_score += 1
+    end
     display_scores(username, player_score, computer_score)
 
     break if player_score == 5 || computer_score == 5
