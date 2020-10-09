@@ -121,13 +121,8 @@ loop do
     display_choices(choice, computer_choice)
     who_won = winner(choice, computer_choice)
     display_results(who_won)
-
-    if who_won == 'player'
-      player_score += 1
-    elsif who_won == 'computer'
-      computer_score += 1
-    end
-
+    player_score += 1 if who_won == 'player'
+    computer_score += 1 if who_won == 'computer'
     display_scores(username, player_score, computer_score)
 
     break if player_score == 5 || computer_score == 5
