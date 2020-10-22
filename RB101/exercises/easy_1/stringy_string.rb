@@ -1,11 +1,11 @@
 # Write a method that takes one argument, a positive integer, and returns a string of alternating 1s and 0s, always starting with 1. 
 # The length of the string should match the given integer.
 
-def stringy(num)
+def stringy(starter =  1, num)
   one_zero = ''
 
   num.times do |element|
-    if element.odd?
+    if (element.odd? && starter == 1) || (element.even? && starter == 0)
       one_zero << '0'
     else
       one_zero << '1'
@@ -15,7 +15,7 @@ def stringy(num)
   one_zero
 end
 
-puts stringy(6) == '101010'
+puts stringy(0, 6) #== '101010'
 puts stringy(9) == '101010101'
 puts stringy(4) == '1010'
 puts stringy(7) == '1010101'
