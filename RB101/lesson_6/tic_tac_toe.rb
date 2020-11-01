@@ -1,4 +1,4 @@
-def marker_x_o()
+def marker_x_o
   loop do
     marker = gets.chomp.downcase
 
@@ -14,14 +14,16 @@ def marker_comp(used_mark)
   used_mark == 'X' ? 'O' : 'X'
 end
 
+# rubocop:disable Metrics/AbcSize
 def display_board(spots)
   puts "#{spots[0][0]}   |   #{spots[0][1]}   |   #{spots[0][2]}".center(24)
-  puts '-'.center(24,'-')
+  puts '-'.center(24, '-')
   puts "#{spots[1][0]}   |   #{spots[1][1]}   |   #{spots[1][2]}".center(24)
-  puts '-'.center(24,'-')
+  puts '-'.center(24, '-')
   puts "#{spots[2][0]}   |   #{spots[2][1]}   |   #{spots[2][2]}".center(24)
   puts
 end
+# rubocop:enable Metrics/AbcSize
 
 def valid_int(spots)
   input = ''
@@ -40,8 +42,8 @@ end
 
 def mark_local(spots, choice)
   choice_idx = 0
-  choice_ar = spots.select do |sub_ar| 
-    if sub_ar.include?(choice) 
+  choice_ar = spots.select do |sub_ar|
+    if sub_ar.include?(choice)
       choice_idx = spots.find_index(sub_ar)
     end
 
@@ -56,34 +58,36 @@ def winner?(spots)
 end
 
 def won_in_row(spots)
-  if spots.any? { |sub_ar| sub_ar.all? { |char| char == 'X' }}
-    who = 'X'
-  elsif spots.any? { |sub_ar| sub_ar.all? { |char| char == 'O' }}
-    who = 'O'
+  if spots.any? { |sub_ar| sub_ar.all? { |char| char == 'X' } }
+    'X'
+  elsif spots.any? { |sub_ar| sub_ar.all? { |char| char == 'O' } }
+    'O'
   else
-    who = false
+    false
   end
 end
 
 def won_in_column(spots)
-  if spots.transpose.any? { |sub_ar| sub_ar.all? { |char| char == 'X' }}
-    who = 'X'
-  elsif spots.transpose.any? { |sub_ar| sub_ar.all? { |char| char == 'O' }}
-    who = 'O'
+  if spots.transpose.any? { |sub_ar| sub_ar.all? { |char| char == 'X' } }
+    'X'
+  elsif spots.transpose.any? { |sub_ar| sub_ar.all? { |char| char == 'O' } }
+    'O'
   else
-    who = false
+    false
   end
 end
 
+# Maybe seperate the true and false win to a different method and then calculate who_won with that?
 def won_diag(spots)
-  won = (spots[0][0] == spots[2][2] && spots[1][1] == spots[0][0]) || (spots[0][2] == spots[2][0] && spots[1][1] == spots[0][2])
+  won = (spots[0][0] == spots[2][2] && spots[1][1] == spots[0][0]) ||
+        (spots[0][2] == spots[2][0] && spots[1][1] == spots[0][2])
 
   if won && spots[1][1] == 'X'
-    who = 'X'
-  elsif won && spots[1][1] =='O'
-    who = 'O'
+    'X'
+  elsif won && spots[1][1] == 'O'
+    'O'
   else
-    who = false
+    false
   end
 end
 
@@ -115,10 +119,10 @@ def vaild_spot(spots)
     p index
   end
 
-  index.select {|num| num != 'X' && num != 'O' }.sample
+  index.select { |num| num != 'X' && num != 'O' }.sample
 end
 
-def valid_end()
+def valid_end
   input = ''
 
   loop do
@@ -139,9 +143,9 @@ def clear_screen
 end
 
 def check_for_tie(spots)
-  spots.all? do |sub_ar| 
+  spots.all? do |sub_ar|
     sub_ar.all? do |num|
-      num == 'X' || num == 'O' 
+      num == 'X' || num == 'O'
     end
   end
 end
@@ -163,10 +167,10 @@ computer_marker = marker_comp(player_marker)
 
 loop do
   spots = [
-          [1, 2, 3], 
-          [4, 5, 6], 
-          [7, 8, 9]
-        ]
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9]
+          ]
 
   loop do
     clear_screen
