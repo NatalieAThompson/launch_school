@@ -1,12 +1,29 @@
-def marker_x_o
+def joinor(spots, seperator = ',', connection = 'or')
+  ar = spots.flatten
+  last_num = ar.pop
+
+  if ar.empty?
+    last_num.to_s
+  else
+    ar.join(seperator + ' ') + ', ' + connection + ' ' + last_num.to_s
+  end
+end
+
+def only_avaliable_spots(spots)
+  spots.flatten.select { |num| num.is_a? Integer }
+end
+
+def prompt(str)
+  puts "~> #{str}"
+end
+
+def marker_x_o(name)
+  prompt "Hello #{name}, would you like to be O or X?"
   loop do
     marker = gets.chomp.downcase
 
-    if marker == 'x' || marker == 'o'
-      return marker.upcase
-    else
-      puts "Please select X/O."
-    end
+    return marker.upcase if marker == 'x' || marker == 'o'
+    prompt "Please select X/O."
   end
 end
 
@@ -16,6 +33,7 @@ end
 
 # rubocop:disable Metrics/AbcSize
 def display_board(spots)
+  clear_screen
   puts "#{spots[0][0]}   |   #{spots[0][1]}   |   #{spots[0][2]}".center(24)
   puts '-'.center(24, '-')
   puts "#{spots[1][0]}   |   #{spots[1][1]}   |   #{spots[1][2]}".center(24)
@@ -25,19 +43,18 @@ def display_board(spots)
 end
 # rubocop:enable Metrics/AbcSize
 
-def valid_int(spots)
-  input = ''
+def select_spot_message(spots)
+  prompt "Please select a number to mark your spot!" 
+  prompt "#{joinor(only_avaliable_spots(spots))}." 
+end
+
+def valid_int(spots_valid)
   loop do
-    input = gets.chomp
+    input = gets.chomp.to_i
 
-    if input.to_i.to_s == input && spots.flatten.include?(input.to_i)
-      break
-    else
-      puts "Please choose a vaild avaliable number."
-    end
+    return input if spots_valid.include?(input)
+    prompt "Please choose a vaild avaliable number."
   end
-
-  input.to_i
 end
 
 def mark_local(spots, choice)
@@ -54,7 +71,7 @@ def mark_local(spots, choice)
 end
 
 def winner?(spots)
-  won_in_row(spots) || won_in_column(spots) || won_diag(spots)
+  !!(won_in_row(spots) || won_in_column(spots) || won_diag(spots))
 end
 
 def won_in_row(spots)
@@ -100,103 +117,79 @@ def who_won(spots)
     won_in_row(spots)
   end
 end
+#Feel like there might be a better way to check for winning conditions than the 4 methods
 
 def reveal_winner(spots, player_marker, computer_marker)
   if who_won(spots) == player_marker
-    puts "You won!"
+    prompt "You won!"
   elsif who_won(spots) == computer_marker
-    puts "The computer won"
+    prompt "The computer won"
   else
-    puts "It's a tie!"
+    prompt "It's a tie!"
   end
-end
-
-def vaild_spot(spots)
-  index = []
-  loop do
-    index = spots[Array(0..2).sample]
-    break if index.any? { |char| char.is_a? Integer }
-    p index
-  end
-
-  index.select { |num| num != 'X' && num != 'O' }.sample
 end
 
 def valid_end
-  input = ''
-
+  prompt "Try best of 5? (Y/N)"
   loop do
-    input = gets.chomp
+    input = gets.chomp.upcase
 
-    if input.downcase == 'y' || input.downcase == 'n'
-      break
-    else
-      puts "Please enter Y/N"
-    end
+    return input if input == 'Y' || input == 'N'
+    prompt "Please enter Y/N"
   end
-
-  input.upcase
 end
 
 def clear_screen
   system("clear") || system("cls")
 end
 
-def check_for_tie(spots)
-  spots.all? do |sub_ar|
-    sub_ar.all? do |num|
-      num == 'X' || num == 'O'
-    end
+def winner_tie_check?(spots)
+  winner?(spots) || only_avaliable_spots(spots).empty?
+end
+
+def mark_spot(spots, choice, marker)
+  pos = mark_local(spots, choice)
+  spots[pos[0]][pos[1].find_index(choice)] = marker
+end
+
+def valid_username()
+  prompt "What should I call you?"
+  loop do
+    username = gets.chomp
+    return username unless username.empty?
+    prompt "Please type a username."
   end
 end
 
-def winner_tie_check?(spots)
-  winner?(spots) || check_for_tie(spots)
-end
-
-def final_screen(spots)
-  clear_screen
-  display_board(spots)
-end
-
-puts "Welcome to Tic-Tac-Toe!"
-puts "Would you like to be O or X?"
-
-player_marker = marker_x_o
+prompt "Welcome to Tic-Tac-Toe!"
+username = valid_username
+player_marker = marker_x_o(username)
 computer_marker = marker_comp(player_marker)
+score_card = [0, 0]
 
 loop do
-  spots = [
-            [1, 2, 3],
+  spots = [ [1, 2, 3],
             [4, 5, 6],
-            [7, 8, 9]
-          ]
+            [7, 8, 9] ]
 
   loop do
-    clear_screen
     display_board(spots)
+    select_spot_message(spots)
+    
+    player_choice = valid_int(only_avaliable_spots(spots))
+    mark_spot(spots, player_choice, player_marker)
+    break if winner_tie_check?(spots)
 
-    puts "Please select a number to mark your spot!"
-    player_choice = valid_int(spots)
-    spots[mark_local(spots, player_choice)[0]][mark_local(spots, player_choice)[1].find_index(player_choice)] = player_marker
-
-    if winner_tie_check?(spots)
-      final_screen(spots)
-      break
-    end
-
-    computer_choice = vaild_spot(spots)
-    spots[mark_local(spots, computer_choice)[0]][mark_local(spots, computer_choice)[1].find_index(computer_choice)] = computer_marker
-
-    if winner_tie_check?(spots)
-      final_screen(spots)
-      break
-    end
+    computer_choice = only_avaliable_spots(spots).sample
+    mark_spot(spots, computer_choice, computer_marker)
+    break if winner_tie_check?(spots)
   end
 
+  display_board(spots)
   reveal_winner(spots, player_marker, computer_marker)
+  prompt "#{username} : 1, Computer : 1"
 
-  puts "Would you like to play again? (Y/N)"
+  
   if valid_end == 'N'
     clear_screen
     break
