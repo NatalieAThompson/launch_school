@@ -187,6 +187,7 @@ loop do
 
   display_board(spots)
   reveal_winner(spots, player_marker, computer_marker)
+  update_score_card()
   prompt "#{username} : 1, Computer : 1"
 
   
