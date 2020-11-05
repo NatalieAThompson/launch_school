@@ -1,3 +1,14 @@
+WINNING = { row: [1, 2, 3],
+            row2: [4, 5, 6],
+            row3: [7, 8, 9],
+            column: [1, 4, 7],
+            column1: [2, 5, 8],
+            column2: [3, 6, 9],
+            diag: [1, 5, 9],
+            diag2: [3, 5, 7] }
+
+FIRST = ['player', 'computer']
+
 def joinor(spots, seperator = ',', connection = 'or')
   ar = spots.flatten
   last_num = ar.pop
@@ -93,6 +104,49 @@ def marks_in_row?(spots, marker, marks_amount = 3) #marker is the player or comp
   end
 end
 
+def marks_in_column?(spots, marker, marks_amount = 3)
+  spots = spots.transpose
+
+  count = spots.map do |sub_ar|
+    [sub_ar.count('X'), sub_ar.count('O')]
+  end
+
+  if marks_amount == 3
+    if marker == 'X' && count.any? { |sub_ar| sub_ar[0] == 3 } ||
+       marker == 'O' && count.any? { |sub_ar| sub_ar[1] == 3 }
+      true
+    end
+  else 
+    if marker == 'X' && count.any? { |sub_ar| sub_ar[0] == 2 } ||
+       marker == 'O' && count.any? { |sub_ar| sub_ar[1] == 2 }
+      true
+    end
+  end
+end
+
+def marks_diag?(spots, marker, marks_amount = 3)
+  spots = [ 
+          [spots[0][0], spots[1][1], spots[2][2]], 
+          [spots[0][2], spots[1][1], spots[2][0]]
+          ]
+  
+  count = spots.map do |sub_ar|
+    [sub_ar.count('X'), sub_ar.count('O')]
+  end
+
+  if marks_amount == 3
+    if marker == 'X' && count.any? { |sub_ar| sub_ar[0] == 3 } ||
+        marker == 'O' && count.any? { |sub_ar| sub_ar[1] == 3 }
+      true
+    end
+  else 
+    if marker == 'X' && count.any? { |sub_ar| sub_ar[0] == 2 } ||
+        marker == 'O' && count.any? { |sub_ar| sub_ar[1] == 2 }
+      true
+    end
+  end
+end
+
 def won_in_row(spots)
   if marks_in_row?(spots, 'X')
     'X'
@@ -104,9 +158,11 @@ def won_in_row(spots)
 end
 
 def won_in_column(spots)
-  if spots.transpose.any? { |sub_ar| sub_ar.all? { |char| char == 'X' } }
+  #if spots.transpose.any? { |sub_ar| sub_ar.all? { |char| char == 'X' } }
+  if marks_in_column?(spots, 'X')
     'X'
-  elsif spots.transpose.any? { |sub_ar| sub_ar.all? { |char| char == 'O' } }
+  #elsif spots.transpose.any? { |sub_ar| sub_ar.all? { |char| char == 'O' } }
+  elsif marks_in_column?(spots, 'O')
     'O'
   else
     false
@@ -115,12 +171,14 @@ end
 
 # Maybe seperate the true and false win to a different method and then calculate who_won with that?
 def won_diag(spots)
-  won = (spots[0][0] == spots[2][2] && spots[1][1] == spots[0][0]) ||
-        (spots[0][2] == spots[2][0] && spots[1][1] == spots[0][2])
+  # won = (spots[0][0] == spots[2][2] && spots[1][1] == spots[0][0]) ||
+  #       (spots[0][2] == spots[2][0] && spots[1][1] == spots[0][2])
 
-  if won && spots[1][1] == 'X'
+  #if won && spots[1][1] == 'X'
+  if marks_diag?(spots, 'X')
     'X'
-  elsif won && spots[1][1] == 'O'
+  #elsif won && spots[1][1] == 'O'
+  elsif marks_diag?(spots, 'O')
     'O'
   else
     false
@@ -197,26 +255,46 @@ def players_turn!(spots, player_marker)
   mark_spot(spots, player_choice, player_marker)
 end
 
-def defensive_spot_avalible?(spots, player_marker) 
+def defensive_spot_avalible?(spots, marker) 
   #player is about to win if any row has two player_markers
   #if any column has two player markers
   #if any diagonal has two player markers
-  marks_in_row?(spots, player_marker, 2)
+  marks_in_row?(spots, marker, 2) || marks_in_column?(spots, marker, 2) || marks_diag?(spots, marker, 2)
 end
 
-def find_defensive_spot(spots)
+def find_defensive_spot(spots, marker)
   #returns the number of the defensive_spot
-  p "There is a defensive spot."
-  only_avaliable_spots(spots).sample
+  spots = spots.flatten
+  WINNING.each do |_, value|
+    temp_ar = value - only_avaliable_spots(spots)
+    next unless temp_ar.length == 2 && spots[temp_ar[0]-1] == marker
+    if spots[temp_ar[0]-1] == spots[temp_ar[1]-1]
+      value.each do |num| 
+        unless temp_ar.include?(num)
+          p num
+          return num
+        end
+      end
+    end
+  end
+  false
 end
 
 def computer_turn!(spots, computer_marker, player_marker)
-  #Lets add a functionallity where the computer marks a spot to block the player from winning
-    #To do this we need to look at the win conditions and if two spots are filled by the player marker
-      #The computer picks the 3rd spot.
-  if defensive_spot_avalible?(spots, player_marker)
-    computer_choice = find_defensive_spot(spots)
+  p spots
+  #if defensive_spot_avalible?(spots, computer_marker) && find_defensive_spot(spots, computer_marker)
+  if find_defensive_spot(spots, computer_marker)
+    p "The computer has a spot they can win at."
+    computer_choice = find_defensive_spot(spots, computer_marker) 
+  #elsif defensive_spot_avalible?(spots, player_marker) && find_defensive_spot(spots, player_marker)
+  elsif find_defensive_spot(spots, player_marker)
+    p "There is a defensive spot."
+    computer_choice = find_defensive_spot(spots, player_marker)
+  elsif only_avaliable_spots(spots).include?(5)
+    p "Computer is marking 5"
+    computer_choice = 5
   else
+    puts "The computer is choosing randomly."
     computer_choice = only_avaliable_spots(spots).sample
   end
   mark_spot(spots, computer_choice, computer_marker)
@@ -227,6 +305,7 @@ username = valid_username
 player_marker = marker_x_o(username)
 computer_marker = marker_comp(player_marker)
 score_card = [0, 0]
+FIRST = FIRST.sample #right now first decides who goes first for the whole set.
 
 loop do
   spots = [ [1, 2, 3],
@@ -236,12 +315,23 @@ loop do
   loop do
     display_board(spots)
     display_spot_message(spots)
-    
-    players_turn!(spots, player_marker)
-    break if winner_tie_check?(spots)
 
-    computer_turn!(spots, computer_marker, player_marker)
-    break if winner_tie_check?(spots)
+    if FIRST == 'player'
+      puts "You go first"
+      players_turn!(spots, player_marker)
+      break if winner_tie_check?(spots)
+
+      computer_turn!(spots, computer_marker, player_marker)
+      break if winner_tie_check?(spots)
+    else
+      puts "Computer is choosing first"
+      computer_turn!(spots, computer_marker, player_marker)
+      break if winner_tie_check?(spots)
+      display_board(spots)
+
+      players_turn!(spots, player_marker)
+      break if winner_tie_check?(spots)
+    end
   end
 
   display_board(spots)
