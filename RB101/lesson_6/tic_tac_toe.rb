@@ -30,26 +30,44 @@ end
 
 def marker_x_o(name)
   prompt "Hello #{name}, would you like to be O or X?"
+  marker = ''
   loop do
-    marker = gets.chomp.downcase
+    marker = gets.chomp.upcase
 
-    return marker.upcase if marker == 'x' || marker == 'o'
+    break if marker == 'X' || marker == 'O'
     prompt "Please select X/O."
   end
+
+  [marker, marker_comp(marker)]
 end
 
 def marker_comp(used_mark)
   used_mark == 'X' ? 'O' : 'X'
 end
 
+def colorizes(var)
+  "\e[#{33}m#{var}\e[0m"
+end
+
+def create_colored_board(spots)
+  spots.map {|sub_ar| sub_ar.map { |val| val.is_a?(Integer) ? val : colorizes(val) }}
+end
+
 # rubocop:disable Metrics/AbcSize
 def display_board(spots)
-  #clear_screen
-  puts "#{spots[0][0]}   |   #{spots[0][1]}   |   #{spots[0][2]}".center(24)
+  clear_screen
+  spots = create_colored_board(spots)
+  puts "  |       |   ".center(24)
+  puts "   #{spots[0][0]}   |   #{spots[0][1]}   |   #{spots[0][2]}   ".center(24)
+  puts "  |       |   ".center(24)
   puts '-'.center(24, '-')
-  puts "#{spots[1][0]}   |   #{spots[1][1]}   |   #{spots[1][2]}".center(24)
+  puts "  |       |   ".center(24)
+  puts "   #{spots[1][0]}   |   #{spots[1][1]}   |   #{spots[1][2]}   ".center(24)
+  puts "  |       |   ".center(24)
   puts '-'.center(24, '-')
-  puts "#{spots[2][0]}   |   #{spots[2][1]}   |   #{spots[2][2]}".center(24)
+  puts "  |       |   ".center(24)
+  puts "   #{spots[2][0]}   |   #{spots[2][1]}   |   #{spots[2][2]}   ".center(24)
+  puts "  |       |   ".center(24)
   puts
 end
 # rubocop:enable Metrics/AbcSize
@@ -85,8 +103,7 @@ def winner?(spots)
   !!(won_in_row(spots) || won_in_column(spots) || won_diag(spots))
 end
 
-def marks_in_row?(spots, marker, marks_amount = 3) #marker is the player or computer marker
-  #Returns true if someone won or if someone is close to winning.
+def marks_in_row?(spots, marker, marks_amount = 3)
   count = spots.map do |sub_ar|
     [sub_ar.count('X'), sub_ar.count('O')]
   end
@@ -158,10 +175,8 @@ def won_in_row(spots)
 end
 
 def won_in_column(spots)
-  #if spots.transpose.any? { |sub_ar| sub_ar.all? { |char| char == 'X' } }
   if marks_in_column?(spots, 'X')
     'X'
-  #elsif spots.transpose.any? { |sub_ar| sub_ar.all? { |char| char == 'O' } }
   elsif marks_in_column?(spots, 'O')
     'O'
   else
@@ -169,15 +184,9 @@ def won_in_column(spots)
   end
 end
 
-# Maybe seperate the true and false win to a different method and then calculate who_won with that?
 def won_diag(spots)
-  # won = (spots[0][0] == spots[2][2] && spots[1][1] == spots[0][0]) ||
-  #       (spots[0][2] == spots[2][0] && spots[1][1] == spots[0][2])
-
-  #if won && spots[1][1] == 'X'
   if marks_diag?(spots, 'X')
     'X'
-  #elsif won && spots[1][1] == 'O'
   elsif marks_diag?(spots, 'O')
     'O'
   else
@@ -200,10 +209,10 @@ def victory?(spots, marker)
   who_won(spots) == marker
 end
 
-def reveal_winner(spots, player_marker, computer_marker)
-  if victory?(spots, player_marker)
+def reveal_winner(spots)
+  if victory?(spots, PLAYER_MARKER)
     prompt "You won!"
-  elsif victory?(spots, computer_marker)
+  elsif victory?(spots, COMPUTER_MARKER)
     prompt "The computer won"
   else
     prompt "It's a tie!"
@@ -242,23 +251,20 @@ def valid_username()
   end
 end
 
-def update_score_card!(spots, score_card, player_marker, computer_marker)
-  if victory?(spots, player_marker)
+def update_score_card!(spots, score_card)
+  if victory?(spots, PLAYER_MARKER)
     score_card[0] += 1
-  elsif victory?(spots, computer_marker)
+  elsif victory?(spots, COMPUTER_MARKER)
     score_card[1] += 1
   end
 end
 
-def players_turn!(spots, player_marker)
+def players_turn!(spots)
   player_choice = valid_int(only_avaliable_spots(spots))
-  mark_spot(spots, player_choice, player_marker)
+  mark_spot(spots, player_choice, PLAYER_MARKER)
 end
 
 def defensive_spot_avalible?(spots, marker) 
-  #player is about to win if any row has two player_markers
-  #if any column has two player markers
-  #if any diagonal has two player markers
   marks_in_row?(spots, marker, 2) || marks_in_column?(spots, marker, 2) || marks_diag?(spots, marker, 2)
 end
 
@@ -271,7 +277,6 @@ def find_defensive_spot(spots, marker)
     if spots[temp_ar[0]-1] == spots[temp_ar[1]-1]
       value.each do |num| 
         unless temp_ar.include?(num)
-          p num
           return num
         end
       end
@@ -280,71 +285,78 @@ def find_defensive_spot(spots, marker)
   false
 end
 
-def computer_turn!(spots, computer_marker, player_marker)
-  p spots
-  #if defensive_spot_avalible?(spots, computer_marker) && find_defensive_spot(spots, computer_marker)
-  if find_defensive_spot(spots, computer_marker)
-    p "The computer has a spot they can win at."
-    computer_choice = find_defensive_spot(spots, computer_marker) 
-  #elsif defensive_spot_avalible?(spots, player_marker) && find_defensive_spot(spots, player_marker)
-  elsif find_defensive_spot(spots, player_marker)
-    p "There is a defensive spot."
-    computer_choice = find_defensive_spot(spots, player_marker)
+def computer_turn!(spots)
+  if find_defensive_spot(spots, COMPUTER_MARKER)
+    computer_choice = find_defensive_spot(spots, COMPUTER_MARKER) 
+  elsif find_defensive_spot(spots, PLAYER_MARKER)
+    computer_choice = find_defensive_spot(spots, PLAYER_MARKER)
   elsif only_avaliable_spots(spots).include?(5)
-    p "Computer is marking 5"
     computer_choice = 5
   else
-    puts "The computer is choosing randomly."
     computer_choice = only_avaliable_spots(spots).sample
   end
-  mark_spot(spots, computer_choice, computer_marker)
+  mark_spot(spots, computer_choice, COMPUTER_MARKER)
 end
+
+def starting_board
+  [ [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9] ]
+end
+
+def alternate_player(current)
+  current == 'player' ? 'computer' : 'player'
+end
+
+def place_piece!(spots, turn)
+  if turn == 'player'
+    players_turn!(spots)
+  else
+    computer_turn!(spots)
+  end
+end
+
+def best_of_5?(score)
+  score.include?(3)
+end
+
+## Main code ##
 
 prompt "Welcome to Tic-Tac-Toe!"
 username = valid_username
-player_marker = marker_x_o(username)
-computer_marker = marker_comp(player_marker)
+PLAYER_MARKER, COMPUTER_MARKER = marker_x_o(username)
 score_card = [0, 0]
-FIRST = FIRST.sample #right now first decides who goes first for the whole set.
 
 loop do
-  spots = [ [1, 2, 3],
-            [4, 5, 6],
-            [7, 8, 9] ]
+  spots = starting_board
+  current_player = FIRST.sample
 
   loop do
     display_board(spots)
     display_spot_message(spots)
 
-    if FIRST == 'player'
-      puts "You go first"
-      players_turn!(spots, player_marker)
-      break if winner_tie_check?(spots)
-
-      computer_turn!(spots, computer_marker, player_marker)
-      break if winner_tie_check?(spots)
-    else
-      puts "Computer is choosing first"
-      computer_turn!(spots, computer_marker, player_marker)
-      break if winner_tie_check?(spots)
-      display_board(spots)
-
-      players_turn!(spots, player_marker)
-      break if winner_tie_check?(spots)
-    end
+    place_piece!(spots, current_player)
+    current_player = alternate_player(current_player)
+    break if winner_tie_check?(spots)
   end
 
   display_board(spots)
-  reveal_winner(spots, player_marker, computer_marker)
-  update_score_card!(spots, score_card, player_marker, computer_marker)
+  reveal_winner(spots)
+  update_score_card!(spots, score_card)
   prompt sprintf("%s : %i, Computer : %i", username, score_card[0], score_card[1])
 
   
-  if score_card.include?(5) || valid_end == 'N'
+  if best_of_5?(score_card) || valid_end == 'N' 
     clear_screen
     break
   end
 end
 
-score_card[0] == 5 ? prompt("You won the best of 5!") : prompt("You lost this set") if score_card.include?(5)  
+if best_of_5?(score_card)
+  if score_card[0] > score_card[1] 
+    prompt("You won the best of 5! With a score of: #{score_card}")
+  else 
+    prompt("You lost this set: #{score_card}")
+  end
+end
 prompt "Thanks for playing!"
