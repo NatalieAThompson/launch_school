@@ -360,3 +360,5 @@ if best_of_5?(score_card)
   end
 end
 prompt "Thanks for playing!"
+
+# Display screen at very end so you can see why you lost

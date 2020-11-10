@@ -97,3 +97,19 @@ end
 `line 85` uses the `upto` method to loop through `1` to `max_value` passing in each number
           `line 86` tests if `number` can be evenly divided by 3 or 5
           if that statement is true it adds `number` to `sum`
+
+
+def a_method
+  puts "hello world"
+end
+
+Describe the method:
+`line 102` creates a method definition called `a_method`
+`line 103` calls the puts method which takes in a string argument "hello world" which outputs the string
+           The return value of `a_method` would be nil because puts returns nil and is the last line of the definition call.
+
+`line 1` initalizes the variable `a` to the string 'hello'
+`line 2` initalizes the variable `b` to point at the same
+         place in memory as the variable `a`
+`line 3` reassigns a to a new memory slot with the string
+         'goodbye'
