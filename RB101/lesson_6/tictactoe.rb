@@ -1,11 +1,11 @@
-WINNING = { row: [1, 2, 3],
-            row2: [4, 5, 6],
-            row3: [7, 8, 9],
-            column: [1, 4, 7],
-            column1: [2, 5, 8],
-            column2: [3, 6, 9],
-            diag: [1, 5, 9],
-            diag2: [3, 5, 7] }
+WINNING = [[1, 2, 3],
+           [4, 5, 6],
+           [7, 8, 9],
+           [1, 4, 7],
+           [2, 5, 8],
+           [3, 6, 9],
+           [1, 5, 9],
+           [3, 5, 7]]
 
 ## Display Methods ##
 def clear_screen
@@ -257,12 +257,20 @@ def defensive_spot_avalible?(spots, marker)
     marks_diag?(spots, marker, 2)
 end
 
+def about_to_win?(spots, ar, marker)
+  ar.length == 2 && spots[ar[0] - 1] == marker
+end
+
+def marks_match?(spots, ar)
+  spots[ar[0] - 1] == spots[ar[1] - 1]
+end
+
 def find_defensive_spot(spots, marker)
   spots = spots.flatten
-  WINNING.each do |_, value|
+  WINNING.each do |value|
     temp_ar = value - only_avaliable_spots(spots)
-    next unless temp_ar.length == 2 && spots[temp_ar[0] - 1] == marker
-    if spots[temp_ar[0] - 1] == spots[temp_ar[1] - 1]
+    next unless about_to_win?(spots, temp_ar, marker)
+    if marks_match?(spots, temp_ar)
       value.each do |num|
         unless temp_ar.include?(num)
           return num
@@ -286,12 +294,6 @@ def computer_turn!(spots)
   mark_spot!(spots, computer_choice, COMPUTER_MARKER)
 end
 
-def starting_board
-  [[1, 2, 3],
-   [4, 5, 6],
-   [7, 8, 9]]
-end
-
 def alternate_player(current)
   current == 'player' ? 'computer' : 'player'
 end
@@ -310,12 +312,16 @@ USERNAME = valid_username
 PLAYER_MARKER, COMPUTER_MARKER = marker_x_o
 score_card = [0, 0]
 current_player = valid_player?
+best_of_five = false
 
 loop do
-  spots = starting_board
+  spots = [[1, 2, 3],
+           [4, 5, 6],
+           [7, 8, 9]]
 
   loop do
     clear_screen
+    display_score(score_card) unless score_card == [0, 0]
     display_board(spots)
     display_spot_message(spots)
 
@@ -334,10 +340,12 @@ loop do
     clear_screen
     display_board(spots)
     break
-  elsif valid_end == 'N'
+  elsif !best_of_five && valid_end == 'N'
     clear_screen
     break
   end
+
+  best_of_five = true
 end
 
 ending_screen(score_card)
