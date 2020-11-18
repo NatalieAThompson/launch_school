@@ -1,131 +1,214 @@
-=begin
-Ideas
-To get symbols
-  -windows btn + ;
-  -ctrl + cmd + space (on mac)
+SUITS = { spades: '♠', 
+          hearts: '♥', 
+          clubs: '♣', 
+          diamonds: '♦'}
 
-=end
+def initialize_deck
+ deck = {
+   spades: %w(2 3 4 5 6 7 8 9 10 A J Q K),
+   hearts: %w(2 3 4 5 6 7 8 9 10 A J Q K),
+   clubs: %w(2 3 4 5 6 7 8 9 10 A J Q K),
+   diamonds: %w(2 3 4 5 6 7 8 9 10 A J Q K)
+  }
+  
+  shuffle_deck(deck)
+end
 
-spade = '♠'
-heart = '♥'
-dimond = '♦'
-clubs = '♣'
+def clear_screen
+  system("clear") || system("cls")
+end
 
-puts spade
-puts heart
-puts dimond
-puts clubs
+def shuffle_deck(deck)
+  deck.map do |key, value|
+    [key, value.shuffle]
+  end.to_h
+end
 
-#Hollow symbols
-puts "\u{2664}"	
-puts "\u{2661}"	
-puts "\u{2662}"	
-puts "\u{2667}"
+def initialize_hand(hand, deck)
+  hand = []
+  2.times do
+    suit = SUITS.keys.sample
+    hand << suit << deck[suit].pop
+  end
+  hand
+end
 
-#Solid symbols
-puts "\u{2660}"	
-puts "\u{2665}"	
-puts "\u{2666}"	
-puts "\u{2663}"
+def total(hand)
+  values = hand.select.with_index do |_, index|
+    index.odd?
+  end
 
+  sum = 0
 
-puts '+------------------+'
-puts '|                  |'
-puts '|                  |'
-puts '|                  |'
-puts '|                  |'
-puts '|                  |'
-puts '|                  |'
-puts '|                  |'
-puts '|                  |'
-puts '|                  |'
-puts '+------------------+'
+  values.each do |value|
+    if value == "A"
+      sum += 11
+    elsif value == "J" || value == "Q" || value == "K"
+      sum += 10
+    else
+      sum += value.to_i
+    end
+  end
+  
+  number_of_aces = values.count("A")
+  until sum <= 21
+    unless number_of_aces == 0
+      sum -= 10
+      number_of_aces -= 1
+    end
+    break if number_of_aces == 0
+  end
 
-puts '+------------------+'
-puts "| #{heart}                |"
-puts '|                  |'
-puts '|                  |'
-puts '|                  |'
-puts "|        2         |"
-puts '|                  |'
-puts '|                  |'
-puts '|                  |'
-puts "|                #{heart} |"
-puts '+------------------+'
+  sum
+end
 
-puts '+---------+  +---------+'
-puts '| ♥       |  |         |'
-puts '|         |  |         |'
-puts '|    2    |  |         |'
-puts '|         |  |         |'
-puts '|       ♥ |  |         |'
-puts '+---------+  +---------+'
+def display_hand(hand, show_all = true)
+  hand_size = hand.length / 2
+  digits = hand.select.with_index { |_, index| index.odd? }
+  suit = hand.select.with_index { |_, index| index.even? }
+  suit.map! { |ele| SUITS[ele] }
+  
+  9.times do |n|
+    case n
+    when 0, 8
+      puts "+---------+  " * hand_size
+    when 1
+      str = ''
+      if show_all
+        digits.each do |num|
+          num.length == 1 ? str << "|#{num}        |  " : str << "|#{num}       |  "
+        end
+      else
+        digits.each.with_index do |num, index|
+          if index == 0 
+            str << "|         |  "
+          else
+            num.length == 1 ? str << "|#{num}        |  " : str << "|#{num}       |  "
+          end
+        end
+      end
+      puts str
+    when 2, 3, 5, 6
+      puts "|         |  " * hand_size
+    when 4
+      str = ''
+      suit.each.with_index do |s, index|
+        if !show_all && index == 0 
+          str << "|         |  "
+        else
+          str << "|    #{s}    |  "
+        end
+      end
+      puts str
+    when 7
+      str = ''
+      if show_all
+        digits.each do |num|
+          num.length == 1 ? str << "|        #{num}|  " : str << "|       #{num}|  "
+        end
+      else
+        digits.each.with_index do |num, index|
+          if index == 0 
+            str << "|         |  "
+          else
+            num.length == 1 ? str << "|        #{num}|  " : str << "|       #{num}|  "
+          end
+        end
+      end
+      puts str
+    end
+  end
+end
+    
+def display_cards(player_hand, dealer_hand, dealer_show_all = false)
+  puts "Dealer has:" #{dealer_hand[0, 2]} and a mystery card."
+  display_hand(dealer_hand, dealer_show_all)
+  puts "You have:"
+  display_hand(player_hand)
+  puts "Your total is #{total(player_hand)}."
+end
+  
 
-=begin
-Rules:
--You start with a normal 52-card deck consisting of the 4 suits (hearts, diamonds, clubs, and spades), 
-and 13 values (2, 3, 4, 5, 6, 7, 8, 9, 10, jack, queen, king, ace).
--The goal of Twenty-One is to try to get as close to 21 as possible, without going over. If you go over 21, it's a "bust" and you lose.
--Setup: the game consists of a "dealer" and a "player". Both participants are initially dealt 2 cards. 
-The player can see their 2 cards, but can only see one of the dealer's cards.
+def hit!(hand, deck)
+  suit = SUITS.keys.sample
+  hand << suit << deck[suit].pop
+  hand
+end
 
-Card	Value
-2 - 10	face value
-jack, queen, king	10
-ace	1 or 11
--player hits (asks for a new card) until they stay (keep there current hand) or bust (go over 21 for hand values)
--Dealer turn. hits til his total is 17 or greater. If he busts player wins.
--If neither person busts then compare the totals of the player and dealer.
-=end
+loop do
+  clear_screen
+  deck = initialize_deck
+  
+  player_hand = []
+  dealer_hand = []
 
-# 1. Initialize deck
-# 2. Deal cards to player and dealer
-# 3. Player turn: hit or stay
-#   - repeat until bust or "stay"
-# 4. If player bust, dealer wins.
-# 5. Dealer turn: hit or stay
-#   - repeat until total >= 17
-# 6. If dealer bust, player wins.
-# 7. Compare cards and declare winner.
+  player_hand = initialize_hand(player_hand, deck)
+  dealer_hand = initialize_hand(dealer_hand, deck)
 
-=begin
-Rules:
--You start with a normal 52-card deck consisting of the 4 suits (hearts, diamonds, clubs, and spades), 
-and 13 values (2, 3, 4, 5, 6, 7, 8, 9, 10, jack, queen, king, ace).
--The goal of Twenty-One is to try to get as close to 21 as possible, without going over. If you go over 21, it's a "bust" and you lose.
--Setup: the game consists of a "dealer" and a "player". Both participants are initially dealt 2 cards. 
-The player can see their 2 cards, but can only see one of the dealer's cards.
+  display_cards(player_hand, dealer_hand)
+  
+  player_busted = false
+  dealer_busted = false
 
-Card  Value
-2 - 10  face value
-jack, queen, king  10
-ace  1 or 11
--player hits (asks for a new card) until they stay (keep there current hand) or bust (go over 21 for hand values)
--Dealer turn. hits til his total is 17 or greater. If he busts player wins.
--If neither person busts then compare the totals of the player and dealer.
-=end
+  #player_turn
+  loop do
+    puts "Do you want to hit or stay? (h/s)"
+    answer = gets.chomp 
+    if answer == "h"
+      player_hand = hit!(player_hand, deck)
+      clear_screen
+      display_cards(player_hand, dealer_hand)
+      if total(player_hand) > 21
+        player_busted = true
+        break
+      end
+    elsif answer == "s"
+      break
+    end
+  end
+  
+  #dealer_turn
+  loop do
+    break if total(dealer_hand) >= 17 || player_busted
+    dealer_hand = hit!(dealer_hand, deck)
+    if total(dealer_hand) > 21
+      puts "Dealer busted!"
+      dealer_busted = true
+      break
+    end
+    
+  end
+  
+  if player_busted
+    clear_screen
+    display_cards(player_hand, dealer_hand, true)
+    puts "Dealer won, you busted."
+  elsif dealer_busted
+    clear_screen
+    display_cards(player_hand, dealer_hand, true)
+    puts "You won!! Dealer Busted!"
+  elsif total(player_hand) > total(dealer_hand)
+    clear_screen
+    display_cards(player_hand, dealer_hand, true)
+    puts "You won!! With a total of #{total(player_hand)} to #{total(dealer_hand)}."
+  elsif total(player_hand) < total(dealer_hand)
+    clear_screen
+    display_cards(player_hand, dealer_hand, true)
+    puts "Dealer won, with a total of #{total(dealer_hand)}."
+  else
+    clear_screen
+    display_cards(player_hand, dealer_hand, true)
+    puts "It's a tie!"
+  end
 
-# Deck = {
-#   spades => [2, 3, 4, 5, 6, 7, 8, 9, 10, "A", "J", "Q", "K"]
-#   hearts => [2, 3, 4, 5, 6, 7, 8, 9, 10, "A", "J", "Q", "K"]
-#   clubs => [2, 3, 4, 5, 6, 7, 8, 9, 10, "A", "J", "Q", "K"]
-#   diamonds => [2, 3, 4, 5, 6, 7, 8, 9, 10, "A", "J", "Q", "K"]
-# }
-
-# suit = Deck.keys.sample 
-# Deck[suit][0] #shuffle all the decks and pop off a value as the drawn card
-
-# player_hand = [card1, card2] #add cards to the array
-# dealer_hand = [card1, card2] 
-
-
-# #method that draws out the player and dealers hands
-# #pass in the suit and number of each of there cards
-# puts '+---------+  +---------+'
-# puts '| ♥       |  |         |'
-# puts '|         |  |         |'
-# puts '|    2    |  |         |'
-# puts '|         |  |         |'
-# puts '|       ♥ |  |         |'
-# puts '+---------+  +---------+'
-
+  puts "Do you want to play again?"
+  answer = gets.chomp
+  if answer == "y"  
+    next
+  else
+    break
+  end
+  
+end
+  
+puts "Thank you for playing!"
