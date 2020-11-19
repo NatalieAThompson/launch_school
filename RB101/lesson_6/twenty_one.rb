@@ -24,7 +24,7 @@ def shuffle_deck(deck)
   end.to_h
 end
 
-def initialize_hand(hand, deck)
+def initialize_hand(deck)
   hand = []
   2.times do
     suit = SUITS.keys.sample
@@ -120,14 +120,31 @@ def display_hand(hand, show_all = true)
   end
 end
     
-def display_cards(player_hand, dealer_hand, dealer_show_all = false)
+def display_cards(player_hand, dealer_hand, dealer_show_all = false, action = "stayed")
   puts "Dealer has:" #{dealer_hand[0, 2]} and a mystery card."
   display_hand(dealer_hand, dealer_show_all)
+  puts "Dealer #{action} for #{total(dealer_hand)}." if dealer_show_all
   puts "You have:"
   display_hand(player_hand)
   puts "Your total is #{total(player_hand)}."
 end
+
+def display_cards_dealer_turn(player_hand, dealer_hand, deck)
+  puts "You have:"
+  display_hand(player_hand)
+  puts "Your total is #{total(player_hand)}."
   
+  loop do
+    dealer_hand = hit!(dealer_hand, deck)
+    display_hand(dealer_hand)
+    dealer_busted = check_for_bust?(dealer_hand)
+    break if dealer_busted || total(dealer_hand) >= 17
+    puts "-----------------------------"
+    puts "Dealer is currently thinking."
+    sleep(4)
+  end
+end
+#Need to understand if dealer_hand mutates or not. (would be better if it did)
 
 def hit!(hand, deck)
   suit = SUITS.keys.sample
@@ -135,57 +152,47 @@ def hit!(hand, deck)
   hand
 end
 
-loop do
-  clear_screen
-  deck = initialize_deck
-  
-  player_hand = []
-  dealer_hand = []
-
-  player_hand = initialize_hand(player_hand, deck)
-  dealer_hand = initialize_hand(dealer_hand, deck)
-
-  display_cards(player_hand, dealer_hand)
-  
-  player_busted = false
-  dealer_busted = false
-
-  #player_turn
+def valid_hit_stay
+  puts "Do you want to (h)it or (s)tay?"
   loop do
-    puts "Do you want to hit or stay? (h/s)"
-    answer = gets.chomp 
-    if answer == "h"
-      player_hand = hit!(player_hand, deck)
-      clear_screen
-      display_cards(player_hand, dealer_hand)
-      if total(player_hand) > 21
-        player_busted = true
-        break
-      end
-    elsif answer == "s"
-      break
-    end
-  end
-  
-  #dealer_turn
-  loop do
-    break if total(dealer_hand) >= 17 || player_busted
-    dealer_hand = hit!(dealer_hand, deck)
-    if total(dealer_hand) > 21
-      puts "Dealer busted!"
-      dealer_busted = true
-      break
+    answer = gets.chomp.downcase
+    
+    if answer == 'h' || answer == 's'
+      return answer
     end
     
+    puts "Enter h/s"
   end
+end
+
+def check_for_bust?(hand)
+  if total(hand) > 21
+    return true
+  end
+  false
+end
+
+def play_again?
+  puts "Do you want to play again?"
   
-  if player_busted
+  loop do
+    answer = gets.chomp.downcase
+    
+    return true if answer == 'y'
+    return false if answer == 'n'
+    
+    puts "Please enter Y/N"
+  end
+end
+
+def display_ending(player_hand, dealer_hand, player_busted, dealer_busted)
+   if player_busted
     clear_screen
     display_cards(player_hand, dealer_hand, true)
     puts "Dealer won, you busted."
   elsif dealer_busted
     clear_screen
-    display_cards(player_hand, dealer_hand, true)
+    display_cards(player_hand, dealer_hand, true, "busted")
     puts "You won!! Dealer Busted!"
   elsif total(player_hand) > total(dealer_hand)
     clear_screen
@@ -200,15 +207,53 @@ loop do
     display_cards(player_hand, dealer_hand, true)
     puts "It's a tie!"
   end
+end
 
-  puts "Do you want to play again?"
-  answer = gets.chomp
-  if answer == "y"  
-    next
-  else
-    break
+loop do
+  clear_screen
+  deck = initialize_deck
+
+  player_hand = initialize_hand(deck)
+  dealer_hand = initialize_hand(deck)
+
+  display_cards(player_hand, dealer_hand)
+  
+  player_busted = false
+  dealer_busted = false
+
+  #player_turn
+  until player_busted
+    break if valid_hit_stay == "s"
+    clear_screen
+    player_hand = hit!(player_hand, deck)
+    display_cards(player_hand, dealer_hand, false, "hit")
+    player_busted = check_for_bust?(player_hand)
+  end
+  clear_screen
+  puts "Dealers turn"
+  #dealer_turn
+  # until stop
+  #   break if total(dealer_hand) >= 17 || player_busted
+  #   stop = display_cards_dealer_turn(...)
+  # end
+  unless total(dealer_hand) >= 17 || player_busted
+    display_cards_dealer_turn(player_hand, dealer_hand, deck) 
   end
   
-end
+  display_ending(player_hand, dealer_hand, player_busted, dealer_busted)
   
+  break unless play_again? 
+end
+
+clear_screen
 puts "Thank you for playing!"
+
+
+#Game improvements
+#If the dealer isn't going to draw a card display the dealer stayed with a total of ...
+#If the dealer is goin to draw a card the display the dealer hit and is now at ...
+
+#Should I make that more clear for the player as well?
+
+#Maybe for the dealers turn we could only show the cards in there hand?
+#Maybe make your hand a constant at the top of the screen while the dealer's turn is happening?
