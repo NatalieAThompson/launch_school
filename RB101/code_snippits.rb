@@ -96,4 +96,53 @@ arr.each { |n| puts n }
 # This will print the element being referenced by n inside the calling object on each iteration of the method and return nil. 
 # However, since the each method ignores the return value, it will return the calling Array object arr is referencing.
 # The each method performs iteration and executes the code within the block but ignores the blocks return value and returns the calling object.
-		
+
+def test(str)
+  str  += '!' # str = str.+('!')
+  str.downcase!
+end
+
+test_str = 'Written Assessment'
+test(test_str)
+
+puts test_str
+
+# This problem demonstrates the concept of variable scope in that the code within `test` is scoped local only to the method and has no effect on `test_str` in the outer scope.
+
+words = %w(jump trip laugh run talk)
+
+new_array = words.map do |word|
+  word.start_with?("t")
+end
+
+p new_array
+
+# This problem demonstrates the concept of transformation. `map` invokes the given block once for each element in the array on which it was called and each element is transformed based on the return value.
+
+result = [1, 2, 3].any?(do |num|
+  num.>(4) # `#>`
+end)
+
+puts result
+
+=begin
+
+The code will return true. The concept is the `any` method which will return a boolean value based on the return value of the  block. 
+
+
+The `any` method is invoked on the `[1, 2, 3]` array and passe in a `do/end` block as an argument. If any of the iterations come back true the `any` method evaluates to true.
+
+=end
+
+{ a: "ant", b: "bear", c: "cat" }.any? do |key, value|
+  value.size > 4
+end
+
+The return value is `false`. The concept displayed is truthiness where every value in ruby can evaluate to a boolean value.
+The only values that evaluate to `false` are `false` and `nil`. The `any` method uses this concept when checking the return value of the
+passed in block argument. If the return value of the `do/end` block is truthy the `any` method short-circuits and returns `true` else returns `false`.
+
+The return value is false. 
+The concept DEMONSTRATED is truthiness where every value in ruby can evaluate to TRUE OR FALSE. 
+The only values that evaluate to false are false and nil. 
+The any method ITERATES OVER AND PASSES EACH ELEMENT OF A COLLECTION TO THE GIVEN BLOCK AND RETURNS TRUE IF THE BLOCK EVER RETURNS A VALUE OTHER THAN FALSE OR NIL.
