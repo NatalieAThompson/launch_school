@@ -1,17 +1,20 @@
+require 'io/console'
+
 SUITS = { spades: '♠', 
           hearts: '♥', 
           clubs: '♣', 
           diamonds: '♦'}
 
-CARDS = %w(2 3 4 5 6 7 8 9 10 A J Q K) #can I use this constant or will it mess up shuffle?
+CARDS = %w(2 3 4 5 6 7 8 9 10 A J Q K)
+
+CARD_NAMES = %w(Two Three Four Five Six Seven Eight Nine Ten Ace Jack Queen King)
 
 def initialize_deck
- deck = {
-   spades: CARDS.clone, 
-   hearts: CARDS.clone,
-   clubs: CARDS.clone,
-   diamonds: CARDS.clone
-  }
+ deck = {}
+  
+  SUITS.each do |key, _| 
+   deck[key] = CARDS.clone
+  end
   
   shuffle_deck(deck)
 end
@@ -139,15 +142,40 @@ end
 #Need to break this method into parts and I need to look up how to handle the end of the screen.
 #Maybe if a hand has more than 5 cards this loops for the rest of the cards?
     
-def display_cards(player_hand, dealer_hand, dealer_show_all = false, action = "stayed for", p_total, d_total)
-  puts "Dealer's hand:"
-  display_hand(dealer_hand, dealer_show_all)
-  puts "Dealer #{action} #{d_total}." if dealer_show_all
+def display_cards(player_hand, dealer_hand, dealer_show_all, action, p_total, d_total)
+  prompt "Dealer's hand:"
+  if ILLUSTRATION_TEXT
+    display_hand(dealer_hand, dealer_show_all)
+  else
+    print "Mystery card, "
+    format_hand(dealer_hand[2..-1])
+  end
+  prompt "Dealer #{action} #{d_total}." if dealer_show_all
   puts
-  puts "You're hand:"
-  display_hand(player_hand)
-  puts "Your total is #{p_total}."
+  prompt "You're hand:"
+  if ILLUSTRATION_TEXT
+    display_hand(player_hand)
+  else
+    format_hand(player_hand)
+  end
+  prompt "Your total is #{p_total}."
   puts
+end
+
+def dealer_turn
+  #Maybe extract the information from display_cards_dealer_turn to this method?
+end
+
+def format_hand(hand)
+  string_ar = []
+  
+  (hand.length).times do |n|
+    if n.even?
+      string_ar << "#{CARD_NAMES[CARDS.find_index(hand[n+1])]} of #{hand[n].to_s.capitalize}"
+    end
+  end
+  
+  puts string_ar.join(', ')
 end
 
 def display_cards_dealer_turn(player_hand, dealer_hand, deck, d_total)
@@ -156,11 +184,12 @@ def display_cards_dealer_turn(player_hand, dealer_hand, deck, d_total)
   loop do
     dealer_hand = hit!(dealer_hand, deck)
     d_total = total(dealer_hand)
-    display_hand(dealer_hand)
+    ILLUSTRATION_TEXT ? display_hand(dealer_hand) : format_hand(dealer_hand)
+    puts
     dealer_busted = check_for_bust?(dealer_hand, d_total)
     break if dealer_busted || d_total >= DEALER_STAY
     puts "---------------------------------------------------------------"
-    puts "Dealer is drawing cards. Current total is #{d_total}."
+    prompt "Dealer is drawing cards. Current total is #{d_total}."
     sleep(3)
     clear_screen
   end
@@ -180,7 +209,7 @@ def hit!(hand, deck)
 end
 
 def valid_hit_stay
-  puts "Do you want to (h)it or (s)tay?"
+  prompt "Do you want to (h)it or (s)tay?"
   loop do
     answer = gets.chomp.downcase
     
@@ -188,7 +217,7 @@ def valid_hit_stay
       return answer
     end
     
-    puts "Enter h/s"
+    prompt "Enter h/s"
   end
 end
 
@@ -198,7 +227,7 @@ def check_for_bust?(hand, total)
 end
 
 def play_again?
-  puts "Do you want to play again?"
+  prompt "Do you want to play again?"
   
   loop do
     answer = gets.chomp.downcase
@@ -206,7 +235,7 @@ def play_again?
     return true if answer == 'y'
     return false if answer == 'n'
     
-    puts "Please enter Y/N"
+    prompt "Please enter Y/N"
   end
 end
 
@@ -224,31 +253,31 @@ def display_ending(player_hand, dealer_hand, player_busted, dealer_busted, p_tot
     clear_screen
     display_cards(player_hand, dealer_hand, true, "totaled", p_total, d_total)
     puts "-----------------------"
-    puts "Dealer won, you busted."
+    prompt "Dealer won, you busted."
     puts "-----------------------"
   elsif dealer_busted
     clear_screen
     display_cards(player_hand, dealer_hand, true, "busted with", p_total, d_total)
     puts "------------------------"
-    puts "You won!! Dealer Busted!"
+    prompt "You won!! Dealer Busted!"
     puts "------------------------"
   elsif p_total > d_total
     clear_screen
     display_cards(player_hand, dealer_hand, true, "totaled", p_total, d_total)
     puts "---------------------------------------------------"
-    puts "You won!! With a total of #{p_total} to #{d_total}."
+    prompt "You won!! With a total of #{p_total} to #{d_total}."
     puts "---------------------------------------------------"
   elsif p_total < d_total
     clear_screen
     display_cards(player_hand, dealer_hand, true, "totaled", p_total, d_total)
     puts "---------------------------------------"
-    puts "Dealer won, with a total of #{d_total}."
+    prompt "Dealer won, with a total of #{d_total}."
     puts "---------------------------------------"
   else
     clear_screen
     display_cards(player_hand, dealer_hand, true, "totaled", p_total, d_total)
     puts "-----------"
-    puts "It's a tie!"
+    prompt "It's a tie!"
     puts "-----------"
   end
 end
@@ -264,7 +293,7 @@ def update_points!(points, p_total, d_total, p_bust, d_bust)
 end
 
 def continue?
-  puts "Press c to continue."
+  prompt "Press c to continue."
 
   loop do
     continue = gets.chomp.downcase
@@ -273,17 +302,8 @@ def continue?
   end
 end
 
-def set_name
-  puts "Please enter a username"
-
-  loop do
-    name = gets.chomp.capitalize
-
-    return name unless name.empty?
-    puts "Please enter a name."
-  end
-end
-
+#Just ask the user to pick a number 21 or over? 
+#could add decks for every 100 points so that cards don't run out?
 def set_number
   choices = %w(21 31 41 51 61 71 81 91)
   puts "What number would you like to play to?"
@@ -294,15 +314,37 @@ def set_number
     
     return answer.to_i if choices.include?(answer)
     
-    puts "Please select the target score."
+    prompt "Please select the target score."
   end
 end
 
-puts "Welcome to Twenty-One"
-puts "Be the first to win 5 points!"
-USERNAME = set_name
+def check_screen_size
+  height, width = IO.console.winsize
+  
+  height > 32 && width > 63
+end
+
+def prompt(str)
+  puts "~> " + str
+end
+
+def ask_user_fix_screen
+  prompt "To see illustrations full screen your console now."
+  
+  continue?
+end
+
+def welcome_screen
+  prompt "Welcome to Black Jack!"
+  puts "-------------------------------------------------"
+  ask_user_fix_screen if !check_screen_size
+  prompt "Be the first to win 5 points!"
+end
+
+welcome_screen
 WINNING_NUMBER = set_number
 DEALER_STAY = WINNING_NUMBER - 4
+ILLUSTRATION_TEXT = check_screen_size # could do true for illustration, false for text
 
 loop do
   points = [0, 0]
@@ -333,14 +375,14 @@ loop do
     end
     
     clear_screen
-    puts "Dealers turn"
+    prompt "Dealers turn"
     unless dealer_total >= DEALER_STAY || player_busted
       dealer_busted, dealer_total = display_cards_dealer_turn(player_hand, dealer_hand, deck, dealer_total) 
     end
     
     display_ending(player_hand, dealer_hand, player_busted, dealer_busted, player_total, dealer_total)
     update_points!(points, player_total, dealer_total, player_busted, dealer_busted)
-    puts "#{USERNAME}: #{points[0]} to Dealers: #{points[1]}."
+    prompt "Player: #{points[0]} to Dealer: #{points[1]}."
     
     break if points.include?(5)
     continue?
@@ -348,15 +390,17 @@ loop do
 
   if points[0] > points[1]
     puts 
-    puts "You won the set!"
+    prompt "You won the set!"
     puts
   else
     puts 
-    puts "Better luck next time."
+    prompt "Better luck next time."
     puts
   end
   break unless play_again?
 end
 
 clear_screen
-puts "Thank you for playing!"
+prompt "Thank you for playing!"
+
+#Right now on the dealers turn he still shows cards if screen is too small.
