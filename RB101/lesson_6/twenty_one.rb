@@ -1,210 +1,267 @@
 require 'io/console'
 
-SUITS = { spades: '♠', 
-          hearts: '♥', 
-          clubs: '♣', 
-          diamonds: '♦'}
+SUITS = { spades: '♠',
+          hearts: '♥',
+          clubs: '♣',
+          diamonds: '♦' }
 
 CARDS = %w(2 3 4 5 6 7 8 9 10 A J Q K)
 
-CARD_NAMES = %w(Two Three Four Five Six Seven Eight Nine Ten Ace Jack Queen King)
+CARD_NAMES = %w(Two
+                Three
+                Four
+                Five
+                Six
+                Seven
+                Eight
+                Nine
+                Ten
+                Ace
+                Jack
+                Queen
+                King)
 
-def initialize_deck
- deck = {}
-  
-  SUITS.each do |key, _| 
-   deck[key] = CARDS.clone
-  end
-  
-  shuffle_deck(deck)
-end
-
+# Display Methods
 def clear_screen
   system("clear") || system("cls")
 end
 
+# Function Methods
+def initialize_deck
+  deck = {}
+
+  SUITS.each { |key, _| deck[key] = CARDS.clone }
+
+  shuffle_deck(deck)
+end
+
 def shuffle_deck(deck)
-  deck.map do |key, value|
-    [key, value.shuffle]
-  end.to_h
+  deck.map { |key, value| [key, value.shuffle] }.to_h
 end
 
 def initialize_hand(deck)
   hand = []
+
   2.times do
     suit = SUITS.keys.sample
     hand << suit << deck[suit].pop
   end
+
   hand
 end
 
-def total(hand)
-  values = hand.select.with_index do |_, index|
-    index.odd?
+def select_component(hand, indexes)
+  hand.select.with_index do |_, index|
+    indexes == 'value' ? index.odd? : index.even?
   end
+end
+
+def total(hand)
+  values = select_component(hand, 'value')
 
   sum = 0
 
   values.each do |value|
-    if value == "A"
-      sum += 11
-    elsif value == "J" || value == "Q" || value == "K"
-      sum += 10
-    else
-      sum += value.to_i
-    end
-  end
-  
-  number_of_aces = values.count("A")
-  until sum <= WINNING_NUMBER
-    unless number_of_aces == 0
-      sum -= 10
-      number_of_aces -= 1
-    end
-    break if number_of_aces == 0
+    sum += case value
+           when "A"
+             11
+           when "J", "Q", "K"
+             10
+           else
+             value.to_i
+           end
   end
 
+  number_of_aces = values.count("A")
+  sum = ace_check(sum, number_of_aces)
+end
+
+def ace_check(sum, number_of_aces)
+  until sum <= WINNING_NUMBER
+    break if number_of_aces == 0
+    sum -= 10
+    number_of_aces -= 1
+  end
   sum
 end
 
-def display_hand(hand, show_all = true)
-  hand_size = hand.length / 2
-  digits = hand.select.with_index { |_, index| index.odd? }
-  suit = hand.select.with_index { |_, index| index.even? }
+def key_to_sym!(suit)
   suit.map! { |ele| SUITS[ele] }
-  
-  #need to break the digits array into nested arrays with only 5 elements each?
+end
+
+def display_top_bottom(num)
+  puts "+---------+  " * num
+end
+
+def string_setup(num1, suit, num2)
+  num1 += " " if num1.length == 1
+  format("|%02s  %s  %02s|  ", num1, suit, num2)
+end
+
+def display_top_value(digits, show_all)
+  str = ''
+  if show_all
+    digits.each do |num|
+      str << string_setup(num, ' ', ' ')
+    end
+  else
+    digits.each.with_index do |num, index|
+      str << if index == 0
+               string_setup(' ', ' ', ' ')
+             else
+               string_setup(num, ' ', ' ')
+             end
+    end
+  end
+  puts str
+end
+
+def display_bottom_value(digits, show_all)
+  str = ''
+  if show_all
+    digits.each do |num|
+      str << string_setup(' ', ' ', num)
+    end
+  else
+    digits.each.with_index do |num, index|
+      str << if index == 0
+               string_setup(' ', ' ', ' ')
+             else
+               string_setup(' ', ' ', num)
+             end
+    end
+  end
+  puts str
+end
+
+def display_suit(suit, show_all)
+  str = ''
+  suit.each.with_index do |s, index|
+    str << if !show_all && index == 0
+             string_setup(' ', ' ', ' ')
+           else
+             string_setup(' ', s, ' ')
+           end
+  end
+  puts str
+end
+
+def display_empty_rows(num)
+  puts "|         |  " * num
+end
+
+def displaying_cards(digits, suit, show_all)
+  9.times do |n|
+    case n
+    when 0, 8
+      display_top_bottom(digits.size)
+    when 1
+      display_top_value(digits, show_all)
+    when 2, 3, 5, 6
+      display_empty_rows(digits.size)
+    when 4
+      display_suit(suit, show_all)
+    when 7
+      display_bottom_value(digits, show_all)
+    end
+  end
+end
+
+def display_hand_setup(hand, show_all = true)
+  value = select_component(hand, 'value')
+  suit = select_component(hand, 'suit')
+  key_to_sym!(suit)
+
+  # Could calculate the amount of cards shown on a line based on screen size?
   loop do
-    if digits.length > 5
-      leftover = digits[5..-1]
-      digits = digits[0...5]
-      
+    if value.length > 5
+      leftover = value[5..-1]
+      value = value[0...5]
+
       s_leftover = suit[5..-1]
       suit = suit[0...5]
     end
-    
-    9.times do |n|
-      case n
-      when 0, 8
-        puts "+---------+  " * digits.size
-      when 1
-        str = ''
-        if show_all
-          digits.each do |num|
-            num.length == 1 ? str << "|#{num}        |  " : str << "|#{num}       |  "
-          end
-        else
-          digits.each.with_index do |num, index|
-            if index == 0 
-              str << "|         |  "
-            else
-              num.length == 1 ? str << "|#{num}        |  " : str << "|#{num}       |  "
-            end
-          end
-        end
-        puts str
-      when 2, 3, 5, 6
-        puts "|         |  " * digits.size
-      when 4
-        str = ''
-        suit.each.with_index do |s, index|
-          if !show_all && index == 0 
-            str << "|         |  "
-          else
-            str << "|    #{s}    |  "
-          end
-        end
-        puts str
-      when 7
-        str = ''
-        if show_all
-          digits.each do |num|
-            num.length == 1 ? str << "|        #{num}|  " : str << "|       #{num}|  "
-          end
-        else
-          digits.each.with_index do |num, index|
-            if index == 0 
-              str << "|         |  "
-            else
-              num.length == 1 ? str << "|        #{num}|  " : str << "|       #{num}|  "
-            end
-          end
-        end
-        puts str
-      end
-    end
-    
-    break if leftover == nil || leftover.empty?
-    digits = leftover
+
+    displaying_cards(value, suit, show_all)
+
+    break if leftover.nil? || leftover.empty?
+    value = leftover
     suit = s_leftover
   end
 end
-#Need to break this method into parts and I need to look up how to handle the end of the screen.
-#Maybe if a hand has more than 5 cards this loops for the rest of the cards?
-    
-def display_cards(player_hand, dealer_hand, dealer_show_all, action, p_total, d_total)
-  prompt "Dealer's hand:"
-  if ILLUSTRATION_TEXT
-    display_hand(dealer_hand, dealer_show_all)
+
+def display_side(hand, show_all = true)
+  if ILLUSTRATION
+    display_hand_setup(hand, show_all)
+  elsif show_all
+    format_hand(hand)
   else
     print "Mystery card, "
-    format_hand(dealer_hand[2..-1])
+    format_hand(hand[2..-1])
   end
-  prompt "Dealer #{action} #{d_total}." if dealer_show_all
+end
+
+def display_screen(player_hand, dealer_hand, show_all, action, p_total, d_total) #Avoid more than 5 parameters
+  prompt "Dealer's hand:"
+  display_side(dealer_hand, show_all)
+  prompt "Dealer #{action} #{d_total}." if show_all
   puts
   prompt "You're hand:"
-  if ILLUSTRATION_TEXT
-    display_hand(player_hand)
-  else
-    format_hand(player_hand)
-  end
+  display_side(player_hand)
   prompt "Your total is #{p_total}."
   puts
 end
 
 def dealer_turn
-  #Maybe extract the information from display_cards_dealer_turn to this method?
+  # Maybe extract the information from display_cards_dealer_turn to this method?
 end
 
 def format_hand(hand)
   string_ar = []
-  
+
   (hand.length).times do |n|
     if n.even?
-      string_ar << "#{CARD_NAMES[CARDS.find_index(hand[n+1])]} of #{hand[n].to_s.capitalize}"
+      string_ar << "#{CARD_NAMES[CARDS.find_index(hand[n + 1])]} of #{hand[n].to_s.capitalize}" # Too long
     end
   end
-  
+
   puts string_ar.join(', ')
 end
 
-def display_cards_dealer_turn(player_hand, dealer_hand, deck, d_total)
+def display_cards_dealer_turn(hand, deck, d_total)
   dealer_busted = false
-  
+
   loop do
-    dealer_hand = hit!(dealer_hand, deck)
-    d_total = total(dealer_hand)
-    ILLUSTRATION_TEXT ? display_hand(dealer_hand) : format_hand(dealer_hand)
+    dealer_hand = hit!(hand, deck)
+    d_total = total(hand)
+    ILLUSTRATION ? display_hand_setup(hand) : format_hand(hand)
     puts
-    dealer_busted = check_for_bust?(dealer_hand, d_total)
+    dealer_busted = check_for_bust?(d_total)
     break if dealer_busted || d_total >= DEALER_STAY
     puts "---------------------------------------------------------------"
     prompt "Dealer is drawing cards. Current total is #{d_total}."
-    sleep(3)
+    sleep(2)
     clear_screen
   end
-  
+
   dealer_busted ? [true, d_total] : [false, d_total]
 end
-#This method does too much
-  #Displays the dealers turn
-  #Mutates the dealers hand
-  #updates the dealers total
-  #checks for dealer bust
+# This method does too much
+  # Displays the dealers turn
+  # Mutates the dealers hand
+  # updates the dealers total
+  # checks for dealer bust
 
 def hit!(hand, deck)
   suit = SUITS.keys.sample
-  hand << suit << deck[suit].pop
+  number = deck[suit].pop
+
+  while number.nil?
+    suit = SUITS.keys.sample
+    number = deck[suit].pop
+  end
+
+  hand << suit << number
   hand
 end
 
@@ -212,33 +269,33 @@ def valid_hit_stay
   prompt "Do you want to (h)it or (s)tay?"
   loop do
     answer = gets.chomp.downcase
-    
+
     if answer == 'h' || answer == 's'
       return answer
     end
-    
+
     prompt "Enter h/s"
   end
 end
 
-def check_for_bust?(hand, total)
-  return true if total > WINNING_NUMBER
-  false
+def check_for_bust?(total)
+  total > WINNING_NUMBER
 end
 
 def play_again?
   prompt "Do you want to play again?"
-  
+
   loop do
     answer = gets.chomp.downcase
-    
+
     return true if answer == 'y'
     return false if answer == 'n'
-    
+
     prompt "Please enter Y/N"
   end
 end
 
+#Complexity too high
 def who_won(p_total, d_total, player_busted, dealer_busted)
   if player_busted || (p_total < d_total && !dealer_busted)
     'dealer'
@@ -247,38 +304,34 @@ def who_won(p_total, d_total, player_busted, dealer_busted)
   end
 end
 
-
-def display_ending(player_hand, dealer_hand, player_busted, dealer_busted, p_total, d_total)
-   if player_busted
-    clear_screen
-    display_cards(player_hand, dealer_hand, true, "totaled", p_total, d_total)
-    puts "-----------------------"
+# ABC Size too big
+def display_ending(player_hand, dealer_hand, player_busted, dealer_busted, p_total, d_total) # Too long
+  clear_screen
+  if player_busted
+    display_screen(player_hand, dealer_hand, true, "totaled", p_total, d_total)
+    puts "-------------------------"
     prompt "Dealer won, you busted."
-    puts "-----------------------"
+    puts "-------------------------"
   elsif dealer_busted
-    clear_screen
-    display_cards(player_hand, dealer_hand, true, "busted with", p_total, d_total)
-    puts "------------------------"
+    display_screen(player_hand, dealer_hand, true, "busted with", p_total, d_total) #Too long
+    puts "--------------------------"
     prompt "You won!! Dealer Busted!"
-    puts "------------------------"
+    puts "--------------------------"
   elsif p_total > d_total
-    clear_screen
-    display_cards(player_hand, dealer_hand, true, "totaled", p_total, d_total)
-    puts "---------------------------------------------------"
+    display_screen(player_hand, dealer_hand, true, "totaled", p_total, d_total)
+    puts "-----------------------------------------------------"
     prompt "You won!! With a total of #{p_total} to #{d_total}."
-    puts "---------------------------------------------------"
+    puts "-----------------------------------------------------"
   elsif p_total < d_total
-    clear_screen
-    display_cards(player_hand, dealer_hand, true, "totaled", p_total, d_total)
-    puts "---------------------------------------"
+    display_screen(player_hand, dealer_hand, true, "totaled", p_total, d_total)
+    puts "-----------------------------------------"
     prompt "Dealer won, with a total of #{d_total}."
-    puts "---------------------------------------"
+    puts "-----------------------------------------"
   else
-    clear_screen
-    display_cards(player_hand, dealer_hand, true, "totaled", p_total, d_total)
-    puts "-----------"
+    display_screen(player_hand, dealer_hand, true, "totaled", p_total, d_total)
+    puts "-------------"
     prompt "It's a tie!"
-    puts "-----------"
+    puts "-------------"
   end
 end
 
@@ -302,25 +355,22 @@ def continue?
   end
 end
 
-#Just ask the user to pick a number 21 or over? 
-#could add decks for every 100 points so that cards don't run out?
 def set_number
-  choices = %w(21 31 41 51 61 71 81 91)
   puts "What number would you like to play to?"
-  puts choices.join(', ')
-  
+  puts "Pick a number between 21 & 101 that ends with a 1."
+
   loop do
-    answer = gets.chomp
-    
-    return answer.to_i if choices.include?(answer)
-    
+    answer = gets.chomp.to_i
+
+    return answer if answer >= 21 && answer.digits[0] == 1 && answer <= 101
+
     prompt "Please select the target score."
   end
 end
 
-def check_screen_size
+def check_screen_size?
   height, width = IO.console.winsize
-  
+
   height > 32 && width > 63
 end
 
@@ -330,21 +380,21 @@ end
 
 def ask_user_fix_screen
   prompt "To see illustrations full screen your console now."
-  
+
   continue?
 end
 
 def welcome_screen
   prompt "Welcome to Black Jack!"
   puts "-------------------------------------------------"
-  ask_user_fix_screen if !check_screen_size
+  ask_user_fix_screen if !check_screen_size?
   prompt "Be the first to win 5 points!"
 end
 
 welcome_screen
 WINNING_NUMBER = set_number
 DEALER_STAY = WINNING_NUMBER - 4
-ILLUSTRATION_TEXT = check_screen_size # could do true for illustration, false for text
+ILLUSTRATION = check_screen_size?
 
 loop do
   points = [0, 0]
@@ -359,48 +409,43 @@ loop do
     player_total = total(player_hand)
     dealer_total = total(dealer_hand)
 
-    display_cards(player_hand, dealer_hand, false, "stayed for", player_total, dealer_total)
-    
+    display_screen(player_hand, dealer_hand, false, "stayed for", player_total, dealer_total) #too long
+
     player_busted = false
     dealer_busted = false
 
-    #player_turn
+    # player_turn
     until player_busted
       break if valid_hit_stay == "s"
       clear_screen
       player_hand = hit!(player_hand, deck)
       player_total = total(player_hand)
-      display_cards(player_hand, dealer_hand, false, "hit for", player_total, dealer_total)
-      player_busted = check_for_bust?(player_hand, player_total)
+      display_screen(player_hand, dealer_hand, false, "hit for", player_total, dealer_total) #Too long
+      player_busted = check_for_bust?(player_total)
     end
     
     clear_screen
     prompt "Dealers turn"
     unless dealer_total >= DEALER_STAY || player_busted
-      dealer_busted, dealer_total = display_cards_dealer_turn(player_hand, dealer_hand, deck, dealer_total) 
+      dealer_busted, dealer_total = display_cards_dealer_turn(dealer_hand, deck, dealer_total) #Too long
     end
-    
-    display_ending(player_hand, dealer_hand, player_busted, dealer_busted, player_total, dealer_total)
-    update_points!(points, player_total, dealer_total, player_busted, dealer_busted)
+
+    display_ending(player_hand, dealer_hand, player_busted, dealer_busted, player_total, dealer_total) #Too long
+    update_points!(points, player_total, dealer_total, player_busted, dealer_busted) #Too long
+    puts
     prompt "Player: #{points[0]} to Dealer: #{points[1]}."
-    
+
     break if points.include?(5)
     continue?
   end
 
   if points[0] > points[1]
-    puts 
     prompt "You won the set!"
-    puts
   else
-    puts 
     prompt "Better luck next time."
-    puts
   end
   break unless play_again?
 end
 
 clear_screen
 prompt "Thank you for playing!"
-
-#Right now on the dealers turn he still shows cards if screen is too small.
