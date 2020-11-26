@@ -26,76 +26,8 @@ def clear_screen
   system("clear") || system("cls")
 end
 
-# Function Methods
-def initialize_deck
-  deck = {}
-
-  SUITS.each { |key, _| deck[key] = CARDS.clone }
-
-  shuffle_deck(deck)
-end
-
-def shuffle_deck(deck)
-  deck.map { |key, value| [key, value.shuffle] }.to_h
-end
-
-def initialize_hand(deck)
-  hand = []
-
-  2.times do
-    suit = SUITS.keys.sample
-    hand << suit << deck[suit].pop
-  end
-
-  hand
-end
-
-def select_component(hand, indexes)
-  hand.select.with_index do |_, index|
-    indexes == 'value' ? index.odd? : index.even?
-  end
-end
-
-def total(hand)
-  values = select_component(hand, 'value')
-
-  sum = 0
-
-  values.each do |value|
-    sum += case value
-           when "A"
-             11
-           when "J", "Q", "K"
-             10
-           else
-             value.to_i
-           end
-  end
-
-  number_of_aces = values.count("A")
-  sum = ace_check(sum, number_of_aces)
-end
-
-def ace_check(sum, number_of_aces)
-  until sum <= WINNING_NUMBER
-    break if number_of_aces == 0
-    sum -= 10
-    number_of_aces -= 1
-  end
-  sum
-end
-
-def key_to_sym!(suit)
-  suit.map! { |ele| SUITS[ele] }
-end
-
 def display_top_bottom(num)
   puts "+---------+  " * num
-end
-
-def string_setup(num1, suit, num2)
-  num1 += " " if num1.length == 1
-  format("|%02s  %s  %02s|  ", num1, suit, num2)
 end
 
 def display_top_value(digits, show_all)
@@ -167,32 +99,9 @@ def displaying_cards(digits, suit, show_all)
   end
 end
 
-def display_hand_setup(hand, show_all = true)
-  value = select_component(hand, 'value')
-  suit = select_component(hand, 'suit')
-  key_to_sym!(suit)
-
-  # Could calculate the amount of cards shown on a line based on screen size?
-  loop do
-    if value.length > 5
-      leftover = value[5..-1]
-      value = value[0...5]
-
-      s_leftover = suit[5..-1]
-      suit = suit[0...5]
-    end
-
-    displaying_cards(value, suit, show_all)
-
-    break if leftover.nil? || leftover.empty?
-    value = leftover
-    suit = s_leftover
-  end
-end
-
 def display_side(hand, show_all = true)
   if ILLUSTRATION
-    display_hand_setup(hand, show_all)
+    setup_hand_display(hand, show_all)
   elsif show_all
     format_hand(hand)
   else
@@ -201,19 +110,17 @@ def display_side(hand, show_all = true)
   end
 end
 
-def display_screen(player_hand, dealer_hand, show_all, action, p_total, d_total) #Avoid more than 5 parameters
-  prompt "Dealer's hand:"
-  display_side(dealer_hand, show_all)
-  prompt "Dealer #{action} #{d_total}." if show_all
-  puts
-  prompt "You're hand:"
-  display_side(player_hand)
-  prompt "Your total is #{p_total}."
-  puts
-end
+def display_screen(p_hand, d_hand, action, totals)
+  show_all = show_mystery_card?(action)
 
-def dealer_turn
-  # Maybe extract the information from display_cards_dealer_turn to this method?
+  prompt "Dealer's hand:"
+  display_side(d_hand, show_all)
+  prompt "Dealer #{action} #{totals[1]}." if show_all
+  puts
+  prompt "Your hand:"
+  display_side(p_hand)
+  prompt "Your total is #{totals[0]}."
+  puts
 end
 
 def format_hand(hand)
@@ -221,48 +128,13 @@ def format_hand(hand)
 
   (hand.length).times do |n|
     if n.even?
-      string_ar << "#{CARD_NAMES[CARDS.find_index(hand[n + 1])]} of #{hand[n].to_s.capitalize}" # Too long
+      string_ar << CARD_NAMES[CARDS.find_index(hand[n + 1])].to_s +
+                   " of " +
+                   hand[n].to_s.capitalize.to_s
     end
   end
 
   puts string_ar.join(', ')
-end
-
-def display_cards_dealer_turn(hand, deck, d_total)
-  dealer_busted = false
-
-  loop do
-    dealer_hand = hit!(hand, deck)
-    d_total = total(hand)
-    ILLUSTRATION ? display_hand_setup(hand) : format_hand(hand)
-    puts
-    dealer_busted = check_for_bust?(d_total)
-    break if dealer_busted || d_total >= DEALER_STAY
-    puts "---------------------------------------------------------------"
-    prompt "Dealer is drawing cards. Current total is #{d_total}."
-    sleep(2)
-    clear_screen
-  end
-
-  dealer_busted ? [true, d_total] : [false, d_total]
-end
-# This method does too much
-  # Displays the dealers turn
-  # Mutates the dealers hand
-  # updates the dealers total
-  # checks for dealer bust
-
-def hit!(hand, deck)
-  suit = SUITS.keys.sample
-  number = deck[suit].pop
-
-  while number.nil?
-    suit = SUITS.keys.sample
-    number = deck[suit].pop
-  end
-
-  hand << suit << number
-  hand
 end
 
 def valid_hit_stay
@@ -278,10 +150,6 @@ def valid_hit_stay
   end
 end
 
-def check_for_bust?(total)
-  total > WINNING_NUMBER
-end
-
 def play_again?
   prompt "Do you want to play again?"
 
@@ -295,53 +163,38 @@ def play_again?
   end
 end
 
-#Complexity too high
-def who_won(p_total, d_total, player_busted, dealer_busted)
-  if player_busted || (p_total < d_total && !dealer_busted)
-    'dealer'
-  elsif dealer_busted || (p_total > d_total && !player_busted)
-    'player'
-  end
+def display_bust_message(winner, loser, punctuation)
+  str = "#{winner} won#{punctuation} #{loser} busted#{punctuation}"
+  border = get_border_length(str)
+
+  display_message(str, border)
 end
 
-# ABC Size too big
-def display_ending(player_hand, dealer_hand, player_busted, dealer_busted, p_total, d_total) # Too long
-  clear_screen
-  if player_busted
-    display_screen(player_hand, dealer_hand, true, "totaled", p_total, d_total)
-    puts "-------------------------"
-    prompt "Dealer won, you busted."
-    puts "-------------------------"
-  elsif dealer_busted
-    display_screen(player_hand, dealer_hand, true, "busted with", p_total, d_total) #Too long
-    puts "--------------------------"
-    prompt "You won!! Dealer Busted!"
-    puts "--------------------------"
-  elsif p_total > d_total
-    display_screen(player_hand, dealer_hand, true, "totaled", p_total, d_total)
-    puts "-----------------------------------------------------"
-    prompt "You won!! With a total of #{p_total} to #{d_total}."
-    puts "-----------------------------------------------------"
-  elsif p_total < d_total
-    display_screen(player_hand, dealer_hand, true, "totaled", p_total, d_total)
-    puts "-----------------------------------------"
-    prompt "Dealer won, with a total of #{d_total}."
-    puts "-----------------------------------------"
+def display_points_message(winner, punctuation, w_total, l_total)
+  str = "#{winner} won#{punctuation} With a total of #{w_total} to #{l_total}."
+  border = get_border_length(str)
+
+  display_message(str, border)
+end
+
+def display_message(str, border)
+  puts border
+  prompt str
+  puts border
+end
+
+def display_end(p_hand, d_hand, p_bust, d_bust, totals)
+  if compare_points(totals[1], totals[0], p_bust)
+    display_points_message("You", "!", totals[0], totals[1])
+  elsif compare_points(totals[0], totals[1], d_bust)
+    display_points_message("Dealer", ".", totals[1], totals[0])
+  elsif p_bust
+    display_bust_message("Dealer", "You", ".")
+  elsif d_bust
+    display_screen(p_hand, d_hand, "busted with", totals)
+    display_bust_message("You", "Dealer", "!")
   else
-    display_screen(player_hand, dealer_hand, true, "totaled", p_total, d_total)
-    puts "-------------"
-    prompt "It's a tie!"
-    puts "-------------"
-  end
-end
-
-def update_points!(points, p_total, d_total, p_bust, d_bust)
-  winner = who_won(p_total, d_total, p_bust, d_bust)
-
-  if winner == 'player'
-    points[0] += 1
-  elsif winner == 'dealer'
-    points[1] += 1
+    display_message("It's a tie.", get_border_length("It's a tie."))
   end
 end
 
@@ -368,12 +221,6 @@ def set_number
   end
 end
 
-def check_screen_size?
-  height, width = IO.console.winsize
-
-  height > 32 && width > 63
-end
-
 def prompt(str)
   puts "~> " + str
 end
@@ -386,9 +233,188 @@ end
 
 def welcome_screen
   prompt "Welcome to Black Jack!"
-  puts "-------------------------------------------------"
+  puts "-".ljust(IO.console.winsize[1], '-')
   ask_user_fix_screen if !check_screen_size?
   prompt "Be the first to win 5 points!"
+end
+
+def display_set_winner(points)
+  if points[0] > points[1]
+    prompt "You won the set!"
+  else
+    prompt "Better luck next time."
+  end
+end
+
+def display_points(points)
+  puts
+  prompt "Player: #{points[0]} to Dealer: #{points[1]}."
+end
+
+def display_goodbye
+  clear_screen
+  prompt "Thank you for playing!"
+end
+
+def display_dealer_turn(total, hand)
+  str = "Dealer is drawing cards. Current total is #{total}."
+  prompt "Dealers turn"
+  ILLUSTRATION ? setup_hand_display(hand) : format_hand(hand)
+  puts
+  puts get_border_length(str)
+  prompt str
+  sleep(2)
+  clear_screen
+end
+
+# Helper Display Methods
+def setup_hand_display(hand, show_all = true)
+  value, suit = select_component(hand)
+  key_to_sym!(suit)
+
+  num = cards_for_screen_width
+  loop do
+    if value.length > num
+      leftover = value[num..-1]
+      value = value[0...num]
+
+      s_leftover = suit[num..-1]
+      suit = suit[0...num]
+    end
+
+    displaying_cards(value, suit, show_all)
+
+    break if leftover.nil? || leftover.empty?
+    value = leftover
+    suit = s_leftover
+  end
+end
+
+def key_to_sym!(suit)
+  suit.map! { |ele| SUITS[ele] }
+end
+
+def string_setup(num1, suit, num2)
+  num1 += " " if num1.length == 1
+  format("|%02s  %s  %02s|  ", num1, suit, num2)
+end
+
+def cards_for_screen_width
+  width = IO.console.winsize[1]
+
+  width / 13
+end
+
+def show_mystery_card?(action)
+  !(action == "stayed for" || action == "hit for")
+end
+
+def get_border_length(str)
+  "-".ljust(str.length + 3, '-')
+end
+
+def check_screen_size?
+  height = IO.console.winsize[0]
+
+  height > 25
+end
+
+# Function Methods
+def initialize_deck
+  deck = {}
+
+  SUITS.each { |key, _| deck[key] = CARDS.clone }
+
+  shuffle_deck(deck)
+end
+
+def shuffle_deck(deck)
+  deck.map { |key, value| [key, value.shuffle] }.to_h
+end
+
+def initialize_hand(deck)
+  hand = []
+
+  2.times do
+    suit = SUITS.keys.sample
+    hand << suit << deck[suit].pop
+  end
+
+  hand
+end
+
+def select_component(hand)
+  hand.partition.with_index do |_, index|
+    index.odd?
+  end
+end
+
+def total(hand)
+  values = select_component(hand)[0]
+
+  sum = 0
+
+  values.each do |value|
+    sum += case value
+           when "A"
+             11
+           when "J", "Q", "K"
+             10
+           else
+             value.to_i
+           end
+  end
+
+  number_of_aces = values.count("A")
+  sum = ace_check(sum, number_of_aces)
+end
+
+def ace_check(sum, number_of_aces)
+  until sum <= WINNING_NUMBER
+    break if number_of_aces == 0
+    sum -= 10
+    number_of_aces -= 1
+  end
+  sum
+end
+
+def hit!(hand, deck)
+  suit = SUITS.keys.sample
+  number = deck[suit].pop
+
+  while number.nil?
+    suit = SUITS.keys.sample
+    number = deck[suit].pop
+  end
+
+  hand << suit << number
+  hand
+end
+
+def check_for_bust?(total)
+  total > WINNING_NUMBER
+end
+
+def who_won(totals, player_busted, dealer_busted)
+  if player_busted || compare_points(totals[0], totals[1], dealer_busted)
+    'dealer'
+  elsif dealer_busted || compare_points(totals[1], totals[0], player_busted)
+    'player'
+  end
+end
+
+def compare_points(points1, points2, bust)
+  ((points1 < points2) && !bust)
+end
+
+def update_points!(points, totals, p_bust, d_bust)
+  winner = who_won(totals, p_bust, d_bust)
+
+  if winner == 'player'
+    points[0] += 1
+  elsif winner == 'dealer'
+    points[1] += 1
+  end
 end
 
 welcome_screen
@@ -406,46 +432,41 @@ loop do
     player_hand = initialize_hand(deck)
     dealer_hand = initialize_hand(deck)
 
-    player_total = total(player_hand)
-    dealer_total = total(dealer_hand)
+    total = [total(player_hand), total(dealer_hand)]
 
-    display_screen(player_hand, dealer_hand, false, "stayed for", player_total, dealer_total) #too long
+    display_screen(player_hand, dealer_hand, "stayed for", total)
 
     player_busted = false
-    dealer_busted = false
 
-    # player_turn
     until player_busted
       break if valid_hit_stay == "s"
       clear_screen
       player_hand = hit!(player_hand, deck)
-      player_total = total(player_hand)
-      display_screen(player_hand, dealer_hand, false, "hit for", player_total, dealer_total) #Too long
-      player_busted = check_for_bust?(player_total)
-    end
-    
-    clear_screen
-    prompt "Dealers turn"
-    unless dealer_total >= DEALER_STAY || player_busted
-      dealer_busted, dealer_total = display_cards_dealer_turn(dealer_hand, deck, dealer_total) #Too long
+      total[0] = total(player_hand)
+      display_screen(player_hand, dealer_hand, "hit for", total)
+      player_busted = check_for_bust?(total[0])
     end
 
-    display_ending(player_hand, dealer_hand, player_busted, dealer_busted, player_total, dealer_total) #Too long
-    update_points!(points, player_total, dealer_total, player_busted, dealer_busted) #Too long
-    puts
-    prompt "Player: #{points[0]} to Dealer: #{points[1]}."
+    clear_screen
+    until total[1] >= DEALER_STAY || player_busted
+      hit!(dealer_hand, deck)
+      total[1] = total(dealer_hand)
+      display_dealer_turn(total[1], dealer_hand)
+    end
+    dealer_busted = check_for_bust?(total[1])
+
+    clear_screen
+    display_screen(player_hand, dealer_hand, "totaled", total) if !dealer_busted
+    display_end(player_hand, dealer_hand, player_busted, dealer_busted, total)
+    update_points!(points, total, player_busted, dealer_busted)
+    display_points(points)
 
     break if points.include?(5)
     continue?
   end
 
-  if points[0] > points[1]
-    prompt "You won the set!"
-  else
-    prompt "Better luck next time."
-  end
+  display_set_winner(points)
   break unless play_again?
 end
 
-clear_screen
-prompt "Thank you for playing!"
+display_goodbye
