@@ -151,7 +151,7 @@ def valid_hit_stay
 end
 
 def play_again?
-  prompt "Do you want to play again?"
+  prompt "Do you want to play again? (Y/N)"
 
   loop do
     answer = gets.chomp.downcase
