@@ -1,4 +1,11 @@
+module Messageable
+  def prompt(message)
+    puts "~> #{message}"
+  end
+end
+
 class Player
+  include Messageable
   attr_accessor :move, :name, :score, :choices
 
   def initialize
@@ -12,25 +19,34 @@ class Human < Player
   def set_name
     n = ""
     loop do
-      puts "What's your name?"
+      prompt "What's your name?"
       n = gets.chomp
       break unless n.empty?
-      puts "Sorry, must enter a value."
+      prompt "Sorry, must enter a value."
     end
     self.name = n.capitalize
+  end
+
+  def add_to_choices(index)
+    choices << Move::SYMBOL_VALUES[index]
+  end
+
+  def find(choice)
+    index = Move::WORD_VALUES.find_index(choice)
+    index ||= Move::CHAR_VALUES.find_index(choice)
+    add_to_choices(index)
+    Move::WORD_VALUES[index]
   end
 
   def choose
     choice = nil
     loop do
-      puts "Please choose (r)ock👊, (p)aper✋, (s)cissors✌, (l)izard🦎, or (sp)ock🖖:"
+      prompt "Choose (r)ock👊, (p)aper✋, (s)cissors✌, (l)izard🦎, or (sp)ock🖖:"
       choice = gets.chomp
-      break if (Move::WORD_VALUES + Move::CHAR_VALUES + Move::SYMBOL_VALUES).include? choice
-      puts "Sorry, invalid choice."
+      break if (Move::VALUES).include? choice
+      prompt "Sorry, invalid choice."
     end
-    index = Move::WORD_VALUES.find_index(choice) || Move::CHAR_VALUES.find_index(choice)
-    choice = Move::WORD_VALUES[index]
-    choices << Move::SYMBOL_VALUES[index]
+    choice = find(choice)
     self.move = Move.const_get(choice.capitalize).new
   end
 end
@@ -61,7 +77,7 @@ end
 
 class Hal < Computer
   def choose
-    choice =  ['scissors', 'scissors', 'scissors', 'scissors', 'scissors', 'rock', 'lizard'].sample
+    choice = ['scissors', 'scissors', 'scissors', 'rock', 'lizard'].sample
     self.move = Move.const_get(choice.capitalize).new
     add_to_choices(choice)
   end
@@ -69,7 +85,7 @@ end
 
 class Chappie < Computer
   def choose
-    choice = ['spock', 'spock', 'spock', 'lizard', 'lizard', 'lizard', 'scissors'].sample
+    choice = ['spock', 'spock', 'lizard', 'lizard', 'scissors'].sample
     self.move = Move.const_get(choice.capitalize).new
     add_to_choices(choice)
   end
@@ -88,63 +104,93 @@ end
 class Move
   WORD_VALUES = ['rock', 'paper', 'scissors', 'lizard', 'spock']
   CHAR_VALUES = ['r', 'p', 's', 'l', 'sp']
-  SYMBOL_VALUES = %w(👊 ✋ ✌ 🦎 🖖)
+  SYMBOL_VALUES = ["👊", "✋", "✌ ", "🦎", "🖖"]
+  VALUES = WORD_VALUES + CHAR_VALUES + SYMBOL_VALUES
 
   def scissors?
-    self.class == Scissors
+    instance_of?(Scissors)
   end
 
   def rock?
-    self.class == Rock
+    instance_of?(Rock)
   end
 
   def paper?
-    self.class == Paper
+    instance_of?(Paper)
   end
 
   def spock?
-    self.class == Spock
+    instance_of?(Spock)
   end
 
   def lizard?
-    self.class == Lizard
+    instance_of?(Lizard)
   end
+end
 
+class Rock < Move
   def >(other_move)
-    (other_move.scissors? && (rock? || spock?)) ||
-      (other_move.rock? && (paper? || spock?)) ||
-      (other_move.paper? && (scissors? || lizard?)) ||
-      (other_move.spock? && (lizard? || paper?)) ||
-      (other_move.lizard? && (rock? || scissors?))
+    other_move.scissors? || other_move.lizard?
   end
 
   def <(other_move)
-    (other_move.paper? && (rock? || spock?)) ||
-      (other_move.scissors? && (paper? || lizard?)) ||
-      (other_move.rock? && (scissors? || lizard?)) ||
-      (other_move.spock? && (scissors? || rock?)) ||
-      (other_move.lizard? && (spock? || paper?))
+    other_move.paper? || other_move.spock?
   end
-
 end
 
-class Rock < Move; end
-class Paper < Move; end
-class Scissors < Move; end
-class Lizard < Move; end
-class Spock < Move; end
+class Paper < Move
+  def >(other_move)
+    other_move.rock? || other_move.spock?
+  end
+
+  def <(other_move)
+    other_move.scissors? || other_move.lizard?
+  end
+end
+
+class Scissors < Move
+  def >(other_move)
+    other_move.paper? || other_move.lizard?
+  end
+
+  def <(other_move)
+    other_move.rock? || other_move.spock?
+  end
+end
+
+class Lizard < Move
+  def >(other_move)
+    other_move.spock? || other_move.paper?
+  end
+
+  def <(other_move)
+    other_move.rock? || other_move.scissors?
+  end
+end
+
+class Spock < Move
+  def >(other_move)
+    other_move.scissors? || other_move.rock?
+  end
+
+  def <(other_move)
+    other_move.lizard? || other_move.paper?
+  end
+end
 
 class RPSGame
+  include Messageable
   attr_accessor :human, :computer, :challenge, :winners
 
   def initialize
+    display_welcome_message
     @human = Human.new
     @computer = [R2D2, Hal, Chappie, Sonny, Number5].sample.new
     @winners = []
   end
 
   def play_again?
-    puts "Would you like to play again? (Y/N)"
+    prompt "Would you like to play again? (Y/N)"
     yes_or_no == 'y'
   end
 
@@ -153,35 +199,37 @@ class RPSGame
       answer = gets.chomp
       result = ['y', 'n'].include? answer.downcase
       return answer.downcase if result
-      puts "Sorry, must be y or n."
+      prompt "Sorry, must be y or n."
     end
   end
 
+  def make_choices
+    human.choose
+    computer.choose
+    update_winners
+  end
+
+  # Too Many lines 10 max
   def play
-    display_welcome_message
     loop do
       clear_screen
-      human.choose
-      computer.choose
-      display_moves
-      display_winner
-      update_score if challenge
-      display_score if challenge
-      display_history if challenge && !winners.empty?
-      break if challenge && (human.score == 10 || computer.score == 10)
-      if !challenge
-        break unless play_again?
-      else
+      make_choices
+      if challenge
+        update_score
+        display_history
+        break if human.score == 10 || computer.score == 10
         continue
+      else
+        display_winner
+        break unless play_again?
       end
     end
-    clear_screen
     display_goodbye_message
   end
 
   def continue
-    puts "Press any button to continue."
-    con = gets.chomp
+    prompt "Press any button to continue."
+    gets.chomp
   end
 
   def clear_screen
@@ -189,36 +237,55 @@ class RPSGame
   end
 
   def display_welcome_message
-    puts "Welcome to Rock, Paper, Scissors, Lizard, Spock!"
+    clear_screen
+    prompt "Welcome to Rock, Paper, Scissors, Lizard, Spock!"
+    puts "---------------------------------------------------"
     challenge_message
   end
 
   def challenge_message
-    puts "First to 10 points is granted the title of Grand Winner"
-    puts "Would you like to take that challenge? (Y/N)"
-    yes_or_no == "y" ? @challenge = true : @challenge = false
+    prompt "First to 10 points is granted the title of Grand Winner"
+    prompt "Would you like to take that challenge? (Y/N)"
+    @challenge = yes_or_no == "y"
+  end
+
+  def display_closing
+    display_history
+    puts "-------------------------------------------------"
+    if human.score == 10
+      prompt "#{human.name} is the Grand Winner!"
+    else
+      prompt "#{computer.name} is the Grand Winner, better luck next time!"
+    end
+    puts "-------------------------------------------------"
   end
 
   def display_goodbye_message
-    puts "Thanks for playing Rock, Paper, Scissors. Good bye!"
+    clear_screen
+    display_closing if human.score == 10 || computer.score == 10
+    prompt "Thanks for playing Rock, Paper, Scissors. Good bye!"
   end
 
   def display_moves
-    puts "#{human.name} chose #{human.move.class}."
-    puts "#{computer.name} chose #{computer.move.class}."
+    clear_screen
+    prompt "#{human.name} chose #{human.move.class}."
+    prompt "#{computer.name} chose #{computer.move.class}."
+  end
+
+  def update_winners
+    winners << if human.move > computer.move
+                 "#{human.name} won!"
+               elsif human.move < computer.move
+                 "#{computer.name} won!"
+               else
+                 "It's a tie!"
+               end
   end
 
   def display_winner
-    if human.move > computer.move
-      winners << human.name
-      puts "#{human.name} won!"
-    elsif human.move < computer.move
-      winners << computer.name
-      puts "#{computer.name} won!"
-    else
-      winners << "No one"
-      puts "It's a tie!"
-    end
+    display_moves
+    prompt winners.last
+    puts
   end
 
   def update_score
@@ -230,14 +297,27 @@ class RPSGame
   end
 
   def display_score
-    puts "#{human.name} currently has #{human.score}. #{computer.name} currently has #{computer.score}."
+    prompt("#{human.name} currently has #{human.score}. " \
+           "#{computer.name} currently has #{computer.score}.")
+  end
+
+  def spaces(object)
+    " " * object.name.length
+  end
+
+  def display_each_round
+    winners.length.times do |idx|
+      prompt("Round #{idx + 1}: #{human.choices[idx]} #{spaces(human)}" \
+            "vs #{computer.choices[idx]} #{spaces(computer)} = #{winners[idx]}")
+    end
   end
 
   def display_history
-    puts "         #{human.name}    #{computer.name}"
-    winners.length.times do |index|
-      puts "Round #{index + 1}: #{human.choices[index]}" + (" " * (human.name.length - 1)) + "vs #{computer.choices[index]}" + (" " * (computer.name.length - 1)) + "= #{winners[index]} won!"
-    end
+    clear_screen
+    prompt "         #{human.name}     #{computer.name}"
+    display_each_round
+    puts
+    display_score
   end
 end
 
