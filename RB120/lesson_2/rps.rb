@@ -189,49 +189,7 @@ class RPSGame
     @winners = []
   end
 
-  def play_again?
-    prompt "Would you like to play again? (Y/N)"
-    yes_or_no == 'y'
-  end
-
-  def yes_or_no
-    loop do
-      answer = gets.chomp
-      result = ['y', 'n'].include? answer.downcase
-      return answer.downcase if result
-      prompt "Sorry, must be y or n."
-    end
-  end
-
-  def make_choices
-    human.choose
-    computer.choose
-    update_winners
-  end
-
-  # Too Many lines 10 max
-  def play
-    loop do
-      clear_screen
-      make_choices
-      if challenge
-        update_score
-        display_history
-        break if human.score == 10 || computer.score == 10
-        continue
-      else
-        display_winner
-        break unless play_again?
-      end
-    end
-    display_goodbye_message
-  end
-
-  def continue
-    prompt "Press any button to continue."
-    gets.chomp
-  end
-
+  # Display Methods
   def clear_screen
     system('clear') || system('cls')
   end
@@ -249,6 +207,31 @@ class RPSGame
     @challenge = yes_or_no == "y"
   end
 
+  def play_again?
+    prompt "Would you like to play again? (Y/N)"
+    yes_or_no == 'y'
+  end
+
+  def yes_or_no
+    loop do
+      answer = gets.chomp
+      result = ['y', 'n'].include? answer.downcase
+      return answer.downcase if result
+      prompt "Sorry, must be y or n."
+    end
+  end
+
+  def continue
+    prompt "Press any button to continue."
+    gets.chomp
+  end
+
+  def display_goodbye_message
+    clear_screen
+    display_closing if human.score == 10 || computer.score == 10
+    prompt "Thanks for playing Rock, Paper, Scissors. Good bye!"
+  end
+
   def display_closing
     display_history
     puts "-------------------------------------------------"
@@ -260,10 +243,23 @@ class RPSGame
     puts "-------------------------------------------------"
   end
 
-  def display_goodbye_message
+  def display_history
     clear_screen
-    display_closing if human.score == 10 || computer.score == 10
-    prompt "Thanks for playing Rock, Paper, Scissors. Good bye!"
+    prompt "         #{human.name}     #{computer.name}"
+    display_each_round
+    puts
+    display_score
+  end
+
+  def display_each_round
+    winners.length.times do |idx|
+      prompt("Round #{idx + 1}: #{human.choices[idx]} #{spaces(human)}" \
+            "vs #{computer.choices[idx]} #{spaces(computer)} = #{winners[idx]}")
+    end
+  end
+
+  def spaces(object)
+    " " * object.name.length
   end
 
   def display_moves
@@ -272,6 +268,18 @@ class RPSGame
     prompt "#{computer.name} chose #{computer.move.class}."
   end
 
+  def display_score
+    prompt("#{human.name} currently has #{human.score}. " \
+           "#{computer.name} currently has #{computer.score}.")
+  end
+
+  def display_winner
+    display_moves
+    prompt winners.last
+    puts
+  end
+
+  # Helper Methods
   def update_winners
     winners << if human.move > computer.move
                  "#{human.name} won!"
@@ -282,10 +290,30 @@ class RPSGame
                end
   end
 
-  def display_winner
-    display_moves
-    prompt winners.last
-    puts
+  # Function Methods
+  def play
+    game_loop
+    display_goodbye_message
+  end
+
+  def game_loop
+    loop do
+      make_choices
+      if challenge
+        update_score
+        break if human.score == 10 || computer.score == 10
+        next if continue
+      end
+      display_winner
+      break unless play_again?
+    end
+  end
+
+  def make_choices
+    clear_screen
+    human.choose
+    computer.choose
+    update_winners
   end
 
   def update_score
@@ -294,30 +322,7 @@ class RPSGame
     elsif human.move < computer.move
       computer.score += 1
     end
-  end
-
-  def display_score
-    prompt("#{human.name} currently has #{human.score}. " \
-           "#{computer.name} currently has #{computer.score}.")
-  end
-
-  def spaces(object)
-    " " * object.name.length
-  end
-
-  def display_each_round
-    winners.length.times do |idx|
-      prompt("Round #{idx + 1}: #{human.choices[idx]} #{spaces(human)}" \
-            "vs #{computer.choices[idx]} #{spaces(computer)} = #{winners[idx]}")
-    end
-  end
-
-  def display_history
-    clear_screen
-    prompt "         #{human.name}     #{computer.name}"
-    display_each_round
-    puts
-    display_score
+    display_history
   end
 end
 
