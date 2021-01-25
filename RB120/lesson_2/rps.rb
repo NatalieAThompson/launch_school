@@ -8,14 +8,16 @@ class Player
   include Messageable
   attr_accessor :move, :name, :score, :choices
 
-  def initialize
+  def initialize(challenge = 'y')
     @score = 0
-    set_name
+    set_name if challenge == 'y'
     @choices = []
   end
 end
 
 class Human < Player
+  attr_accessor :current_choice
+
   def set_name
     n = ""
     loop do
@@ -27,15 +29,17 @@ class Human < Player
     self.name = n.capitalize
   end
 
-  def add_to_choices(index)
-    choices << Move::SYMBOL_VALUES[index]
-  end
-
-  def find(choice)
-    index = Move::WORD_VALUES.find_index(choice)
-    index ||= Move::CHAR_VALUES.find_index(choice)
-    add_to_choices(index)
-    Move::WORD_VALUES[index]
+  def included_choice?(choice)
+    Move::POSSIBLE_CHOICES.each do |values|
+      values.each do |_, value|
+        if value == choice.downcase
+          choices << values[:emoji]
+          @current_choice = values[:full_name]
+          return true
+        end
+      end
+    end
+    false
   end
 
   def choose
@@ -43,138 +47,118 @@ class Human < Player
     loop do
       prompt "Choose (r)ock👊, (p)aper✋, (s)cissors✌, (l)izard🦎, or (sp)ock🖖:"
       choice = gets.chomp
-      break if (Move::VALUES).include? choice
+      break if included_choice?(choice)
       prompt "Sorry, invalid choice."
     end
-    choice = find(choice)
-    self.move = Move.const_get(choice.capitalize).new
+    self.move = Move.const_get(current_choice.capitalize).new
   end
 end
 
 class Computer < Player
+  attr_accessor :options
+
   def set_name
     self.name = self.class.to_s
   end
 
   def choose
-    choice = Move::WORD_VALUES.sample
-    self.move = Move.const_get(choice.capitalize).new
-    add_to_choices(choice)
+    self.move = options.sample.new
+    add_to_choices
   end
 
-  def add_to_choices(choice)
-    index = Move::WORD_VALUES.find_index(choice)
-    choices << Move::SYMBOL_VALUES[index]
+  def add_to_choices
+    choices << move.emoji
   end
 end
 
 class R2D2 < Computer
-  def choose
-    self.move = Paper.new
-    add_to_choices('paper')
+  def initialize
+    self.options = [Paper]
+    super
   end
 end
 
 class Hal < Computer
-  def choose
-    choice = ['scissors', 'scissors', 'scissors', 'rock', 'lizard'].sample
-    self.move = Move.const_get(choice.capitalize).new
-    add_to_choices(choice)
+  def initialize
+    self.options = [Scissors, Scissors, Scissors, Rock, Lizard]
+    super
   end
 end
 
 class Chappie < Computer
-  def choose
-    choice = ['spock', 'spock', 'lizard', 'lizard', 'scissors'].sample
-    self.move = Move.const_get(choice.capitalize).new
-    add_to_choices(choice)
+  def initialize
+    self.options = [Spock, Spock, Lizard, Lizard, Scissors]
+    super
   end
 end
 
-class Sonny < Computer; end
+class Sonny < Computer
+  def initialize
+    self.options = [Rock, Paper, Scissors, Lizard, Spock]
+    super
+  end
+end
 
 class Number5 < Computer
-  def choose
-    choice = ['rock', 'paper', 'scissors'].sample
-    self.move = Move.const_get(choice.capitalize).new
-    add_to_choices(choice)
+  def initialize
+    self.options = [Rock, Paper, Scissors]
+    super
   end
 end
 
 class Move
-  WORD_VALUES = ['rock', 'paper', 'scissors', 'lizard', 'spock']
-  CHAR_VALUES = ['r', 'p', 's', 'l', 'sp']
-  SYMBOL_VALUES = ["👊", "✋", "✌ ", "🦎", "🖖"]
-  VALUES = WORD_VALUES + CHAR_VALUES + SYMBOL_VALUES
+  attr_reader :emoji, :beats
 
-  def scissors?
-    instance_of?(Scissors)
-  end
+  POSSIBLE_CHOICES = [
+    { full_name: 'rock', short_name: 'r', emoji: "👊" },
+    { full_name: 'paper', short_name: 'p', emoji: "✋" },
+    { full_name: 'scissors', short_name: 's', emoji: "✌ " },
+    { full_name: 'lizard', short_name: 'l', emoji: "🦎" },
+    { full_name: 'spock', short_name: 'sp', emoji: "🖖" }
+  ]
 
-  def rock?
-    instance_of?(Rock)
-  end
-
-  def paper?
-    instance_of?(Paper)
-  end
-
-  def spock?
-    instance_of?(Spock)
-  end
-
-  def lizard?
-    instance_of?(Lizard)
+  def >(other_move)
+    other_move.is_a?(beats[0]) || other_move.is_a?(beats[1])
   end
 end
 
 class Rock < Move
-  def >(other_move)
-    other_move.scissors? || other_move.lizard?
-  end
-
-  def <(other_move)
-    other_move.paper? || other_move.spock?
+  def initialize
+    super
+    @emoji = "👊"
+    @beats = [Scissors, Lizard]
   end
 end
 
 class Paper < Move
-  def >(other_move)
-    other_move.rock? || other_move.spock?
-  end
-
-  def <(other_move)
-    other_move.scissors? || other_move.lizard?
+  def initialize
+    super
+    @emoji = "✋"
+    @beats = [Rock, Spock]
   end
 end
 
 class Scissors < Move
-  def >(other_move)
-    other_move.paper? || other_move.lizard?
-  end
-
-  def <(other_move)
-    other_move.rock? || other_move.spock?
+  def initialize
+    super
+    @emoji = "✌ "
+    @beats = [Paper, Lizard]
   end
 end
 
 class Lizard < Move
-  def >(other_move)
-    other_move.spock? || other_move.paper?
-  end
-
-  def <(other_move)
-    other_move.rock? || other_move.scissors?
+  def initialize
+    super
+    @emoji = "🦎"
+    @beats = [Spock, Paper]
   end
 end
 
 class Spock < Move
-  def >(other_move)
-    other_move.scissors? || other_move.rock?
-  end
-
-  def <(other_move)
-    other_move.lizard? || other_move.paper?
+  def initialize
+    super
+    @emoji = "🖖"
+    @beats = [Scissors, Rock]
   end
 end
 
@@ -182,9 +166,11 @@ class RPSGame
   include Messageable
   attr_accessor :human, :computer, :challenge, :winners
 
+  POINTS = 10
+
   def initialize
     display_welcome_message
-    @human = Human.new
+    @human = Human.new(challenge)
     @computer = [R2D2, Hal, Chappie, Sonny, Number5].sample.new
     @winners = []
   end
@@ -202,9 +188,9 @@ class RPSGame
   end
 
   def challenge_message
-    prompt "First to 10 points is granted the title of Grand Winner"
+    prompt "First to #{POINTS} points is granted the title of Grand Winner"
     prompt "Would you like to take that challenge? (Y/N)"
-    @challenge = yes_or_no == "y"
+    @challenge = yes_or_no
   end
 
   def play_again?
@@ -228,14 +214,14 @@ class RPSGame
 
   def display_goodbye_message
     clear_screen
-    display_closing if human.score == 10 || computer.score == 10
+    display_closing if human.score == POINTS || computer.score == POINTS
     prompt "Thanks for playing Rock, Paper, Scissors. Good bye!"
   end
 
   def display_closing
     display_history
     puts "-------------------------------------------------"
-    if human.score == 10
+    if human.score == POINTS
       prompt "#{human.name} is the Grand Winner!"
     else
       prompt "#{computer.name} is the Grand Winner, better luck next time!"
@@ -262,28 +248,16 @@ class RPSGame
     " " * object.name.length
   end
 
-  def display_moves
-    clear_screen
-    prompt "#{human.name} chose #{human.move.class}."
-    prompt "#{computer.name} chose #{computer.move.class}."
-  end
-
   def display_score
     prompt("#{human.name} currently has #{human.score}. " \
            "#{computer.name} currently has #{computer.score}.")
-  end
-
-  def display_winner
-    display_moves
-    prompt winners.last
-    puts
   end
 
   # Helper Methods
   def update_winners
     winners << if human.move > computer.move
                  "#{human.name} won!"
-               elsif human.move < computer.move
+               elsif computer.move > human.move
                  "#{computer.name} won!"
                else
                  "It's a tie!"
@@ -298,14 +272,11 @@ class RPSGame
 
   def game_loop
     loop do
+      break if challenge == 'n'
       make_choices
-      if challenge
-        update_score
-        break if human.score == 10 || computer.score == 10
-        next if continue
-      end
-      display_winner
-      break unless play_again?
+      update_score
+      break if human.score == POINTS || computer.score == POINTS
+      next if continue
     end
   end
 
@@ -319,7 +290,7 @@ class RPSGame
   def update_score
     if human.move > computer.move
       human.score += 1
-    elsif human.move < computer.move
+    elsif computer.move > human.move
       computer.score += 1
     end
     display_history
