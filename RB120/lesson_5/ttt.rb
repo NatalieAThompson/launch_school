@@ -11,14 +11,18 @@ module Clearable
 end
 
 class Player
-  attr_reader :marker
-  attr_accessor :moves, :name, :score
+  attr_reader :marker, :name
+  attr_accessor :moves, :score
 
   def initialize
     @marker = Marker.new
     @moves = []
     @score = 0
   end
+
+  private
+
+  attr_writer :name
 end
 
 class Computer < Player
@@ -31,6 +35,15 @@ class Computer < Player
   def pick_marker
     marker.color = Marker.avaliable_colors.sample.to_s
   end
+
+  def pick_spot(board)
+    picked_moves = opponents_moves(board)
+    location = location_selection(board, picked_moves)
+    record_spot!(location)
+    board.mark_spot(marker, location)
+  end
+
+  private
 
   def picking_avaliable_spot?(board)
     board.avaliable_spots.include?(board.center_spot.to_s)
@@ -60,13 +73,6 @@ class Computer < Player
     end
   end
 
-  def pick_spot(board)
-    picked_moves = opponents_moves(board)
-    location = location_selection(board, picked_moves)
-    record_spot!(location)
-    board.mark_spot(marker, location)
-  end
-
   def avaliable_move?(arr, moves, avaliable_spots)
     avaliable_spots.include?((arr - moves)[0].to_s)
   end
@@ -80,8 +86,6 @@ class Computer < Player
   end
 
   def winning_spot(curr_moves, avaliable_spots)
-    p curr_moves
-    p avaliable_spots
     spot = TTTGame.winning_combos.select do |sub_ar|
       qualify_winning_spot?(sub_ar, curr_moves, avaliable_spots)
     end
@@ -195,27 +199,6 @@ class Board
     self.length = num unless num == length
   end
 
-  def add_empty_sub_arrays(num)
-    num.times do
-      @layout << Array.new(num)
-    end
-  end
-
-  def fill_empty_array_with_numbers
-    count = 1
-    @layout.map! do |sub_ar|
-      sub_ar.map! do |_|
-        ele = count
-        count += 1
-        format_as_string(ele)
-      end
-    end
-  end
-
-  def format_as_string(ele)
-    (0..9).include?(ele) ? "#{ele} " : ele.to_s
-  end
-
   def avaliable_spots
     spots = @layout.flatten
     spots.select! { |ele| ele.to_i.to_s == ele.strip }
@@ -255,6 +238,27 @@ class Board
   private
 
   attr_reader :layout
+
+  def format_as_string(ele)
+    (0..9).include?(ele) ? "#{ele} " : ele.to_s
+  end
+
+  def add_empty_sub_arrays(num)
+    num.times do
+      @layout << Array.new(num)
+    end
+  end
+
+  def fill_empty_array_with_numbers
+    count = 1
+    @layout.map! do |sub_ar|
+      sub_ar.map! do |_|
+        ele = count
+        count += 1
+        format_as_string(ele)
+      end
+    end
+  end
 
   def display
     puts
@@ -352,7 +356,6 @@ class TTTGame
     @current_player = human
   end
 
-  # Too many lines
   def play
     display_welcome_message
     create_winning_combos
@@ -365,52 +368,7 @@ class TTTGame
   attr_reader :human, :computer
   attr_accessor :board
 
-  def game_play
-    loop do
-      play_set
-      display_winner
-      break unless play_again?
-    end
-  end
-
-  def play_set
-    loop do
-      reset
-      play_round
-      puts board
-      display_round_winner
-      update_scores
-      display_scores
-      break if human.score == 5 || computer.score == 5
-      continue
-    end
-  end
-
-  def play_round
-    loop do
-      current_player_moves
-      break if won? || tie?
-    end
-  end
-
-  def continue
-    prompt "Press any button to continue."
-    gets.chomp
-  end
-
-  def current_player_moves
-    puts board
-    @current_player.pick_spot(board)
-    @current_player = @current_player == human ? computer : human
-    puts board
-  end
-
-  def reset
-    board.layout = board.length
-    human.moves = []
-    computer.moves = []
-    @winner = false
-  end
+  # Display Methods
 
   def display_welcome_message
     clear_screen
@@ -419,22 +377,14 @@ class TTTGame
     set_preferences
   end
 
-  def set_preferences
-    human.pick_name
-    introduce_rival
-    human.pick_color
-    computer.pick_marker
-    display_rules
-  end
-
-  def rival_marker_selection
-    "#{computer.name} selected the letter #{computer.marker}to represent them."
-  end
-
   def introduce_rival
     prompt "Hello #{human.name}. You'll be facing off against #{computer.name}."
     prompt rival_marker_selection
     human.pick_marker
+  end
+
+  def rival_marker_selection
+    "#{computer.name} selected the letter #{computer.marker}to represent them."
   end
 
   def display_rules
@@ -444,6 +394,55 @@ class TTTGame
     prompt "Play with (n)ormal rules or pick a (c)ustom board size?"
     self.board = valid_option
   end
+
+  def display_round_winner
+    if @winner == human
+      prompt "#{human.name} got a point!"
+    elsif @winner == computer
+      prompt "#{computer.name} got a point!"
+    else
+      prompt "It was a tie!"
+    end
+  end
+
+  def display_scores
+    prompt "Current Score:"
+    prompt vs_display
+  end
+
+  def vs_display
+    "#{human.name}: #{human.score} vs #{computer.name}: #{computer.score}."
+  end
+
+  def continue
+    prompt "Press any button to continue."
+    gets.chomp
+  end
+
+  def display_winner
+    if human.score == 5
+      prompt "#{human.name} won!"
+    else
+      prompt "#{computer.name} won, better luck next time."
+    end
+  end
+
+  def display_goodbye_message
+    clear_screen
+    prompt "Thank you for playing! I hope to see you again #{human.name}!"
+  end
+
+  # Helper Methods
+
+  def set_preferences
+    human.pick_name
+    introduce_rival
+    human.pick_color
+    computer.pick_marker
+    display_rules
+  end
+
+  # Functionallity Methods
 
   def valid_option
     loop do
@@ -463,71 +462,6 @@ class TTTGame
       break input if (3..6).to_a.include?(input)
       prompt "Please select a number between 3 and 6."
     end
-  end
-
-  def display_round_winner
-    if @winner == human
-      prompt "#{human.name} got a point!"
-    elsif @winner == computer
-      prompt "#{computer.name} got a point!"
-    else
-      prompt "It was a tie!"
-    end
-  end
-
-  def display_winner
-    if human.score == 5
-      prompt "#{human.name} won!"
-    else
-      prompt "#{computer.name} won, better luck next time."
-    end
-  end
-
-  def update_scores
-    if @winner == human
-      human.score += 1
-    elsif @winner == computer
-      computer.score += 1
-    end
-  end
-
-  def vs_display
-    "#{human.name}: #{human.score} vs #{computer.name}: #{computer.score}."
-  end
-
-  def display_scores
-    prompt "Current Score:"
-    prompt vs_display
-  end
-
-  def display_goodbye_message
-    clear_screen
-    prompt "Thank you for playing! I hope to see you again #{human.name}!"
-  end
-
-  def won?
-    @@winning_combos.any? do |sub_ar|
-      if sub_ar - human.moves == []
-        @winner = human
-      elsif sub_ar - computer.moves == []
-        @winner = computer
-      end
-    end
-  end
-
-  def tie?
-    board.avaliable_spots.empty?
-  end
-
-  def play_again?
-    input = nil
-    loop do
-      prompt "Would you like to play best of 5 again?"
-      input = gets.chomp.downcase
-      break if ['y', 'n', 'yes', 'no'].include?(input)
-      prompt "Please choose (y)es or (n)o."
-    end
-    input[0] == 'y'
   end
 
   def create_winning_combos
@@ -582,6 +516,81 @@ class TTTGame
       ele += (board.length - 1) unless plus
       sub_ar << ele
     end
+  end
+
+  def game_play
+    loop do
+      play_set
+      display_winner
+      break unless play_again?
+    end
+  end
+
+  def play_set
+    loop do
+      reset
+      play_round
+      puts board
+      display_round_winner
+      update_scores
+      display_scores
+      break if human.score == 5 || computer.score == 5
+      continue
+    end
+  end
+
+  def reset
+    board.layout = board.length
+    human.moves = []
+    computer.moves = []
+    @winner = false
+  end
+
+  def play_round
+    loop do
+      current_player_moves
+      break if won? || tie?
+    end
+  end
+
+  def current_player_moves
+    puts board
+    @current_player.pick_spot(board)
+    @current_player = @current_player == human ? computer : human
+    puts board
+  end
+
+  def won?
+    @@winning_combos.any? do |sub_ar|
+      if sub_ar - human.moves == []
+        @winner = human
+      elsif sub_ar - computer.moves == []
+        @winner = computer
+      end
+    end
+  end
+
+  def tie?
+    board.avaliable_spots.empty?
+  end
+
+  def update_scores
+    if @winner == human
+      human.score += 1
+    elsif @winner == computer
+      computer.score += 1
+    end
+  end
+
+  def play_again?
+    input = nil
+    loop do
+      prompt "Would you like to play best of 5 again?"
+      input = gets.chomp.downcase
+      break if ['y', 'n', 'yes', 'no'].include?(input)
+      prompt "Please choose (y)es or (n)o."
+    end
+    input[0] == 'y'
   end
 end
 

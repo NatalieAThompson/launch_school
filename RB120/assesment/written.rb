@@ -293,3 +293,201 @@ On line 13 an `ArgumentError` is thrown because when a new instance of the `Bear
 To fix this you could change `super` on line 8 to `super()`.
 
 =end
+
+class Animal
+  def eat
+    puts "I eat."
+  end
+end
+
+class Fish < Animal
+  def eat
+    puts "I eat plankton."
+  end
+end
+
+class Dog < Animal
+  def eat
+     puts "I eat kibble."
+  end
+end
+
+def feed_animal(animal)
+  animal.eat
+end
+
+array_of_animals = [Animal.new, Fish.new, Dog.new]
+array_of_animals.each do |animal|
+  feed_animal(animal)
+end
+
+# What is output and why? How does this code demonstrate polymorphism? 
+The output will be 
+`"I eat"`
+`"I eat plankton."`
+`"I eat kibble."`
+The code demonstrates polymorphism through Duck Typing because each instance has access to the `.eat` instance method which is defined separately in each class. All the instances have access to the `eat` method and since the Fish and Dog inherit from Animal they would have access to the `eat` method even if they did not define their own instance methods but in the above code since all the classes do define their own instance methods it is an example of Duck Typing.
+    
+Polymorphism:
+  
+  1. Class inheritance
+  
+  class Human
+    def eat
+    end
+  end
+  
+  class Child < Human
+  end
+  
+  2. Interface (module) inheritance
+    
+    module Eatable
+      def eat
+      end
+    end
+    
+    class Human
+      include Eatable
+    end
+    
+    class Child
+      include Eatable
+    end
+    
+  3. Duck Typing (An idea, not a specific single-way of defining methods)
+    as long as it has an _____ method and can respond to that method call, it's a _____ (duck)
+    
+    class Human
+      def eat
+        "I'm a human eating"
+      end
+    end
+    
+    class Dog
+      def eat
+        "I'm a dog eating, woof woof"
+      end
+    end
+
+    def eat(species)
+      puts species.eat
+    end
+
+    class Person
+      attr_reader :name
+    
+      def initialize(name)
+        @name = name
+      end
+    
+      def to_s
+        "My name is #{name.upcase!}."
+      end
+    end
+    
+    bob = Person.new('BOB')
+    puts bob.name
+    puts bob # <<<< 
+    # p bob.to_s
+    
+    def puts(object) # << conceptually, this is what puts does, it's a Kernel method meaning it is really defined in C
+      p object.to_s
+    end
+    # p '\n' << is this why it returns nil?
+    puts bob.name
+    
+    # What is output on `lines 14, 15, and 16` and why?
+    
+    # semi trick question (Rona here)
+    
+    # what if @name is pointing to "BOB" (already upcased?)
+    
+    # I think it's a 101 thing; where upcase! returns nil if there's nothing to upcase?
+
+    # Why is it generally safer to invoke a setter method (if available) vs. referencing the instance variable directly when trying to set an instance variable within the class? Give an example.
+
+
+class Human
+  attr_reader :name
+  
+  def initialize(name)
+    @name = name
+  end
+  
+  def name=(name)
+    @name = name.upcase
+  end
+  
+  def change_name=(new_name)
+    return "Oops! Not a correct name, must be string." if new_name is not string
+    
+    self.name = new_name
+  end
+  
+  private
+  
+  attr_accessor :name
+end
+
+
+me = Human.new("Ben")
+
+p me.name
+me.name = "Bob"
+p me.name
+me.change_name = "Herbert"
+p me.name
+
+me.name.upcase!
+
+# tangent: look into Object.class/instance_variable/method_get/set
+
+# access, validation, future-proofing?/DRY?
+
+class Shape
+  @@sides = nil
+  @@shapes = []
+  @@shape_count = 0
+  
+  def self.sides
+    @@sides
+  end
+  
+  def self.shapes
+    @@shapes
+  end
+
+  def sides
+    @@sides
+  end
+  
+  def self.add_shape(new_shape)
+    @@shapes << new_shape
+  end
+end
+
+class Triangle < Shape
+  SIDES = 3
+  
+  def initialize
+    self.class.add_shape(self)
+  end
+end
+
+class Quadrilateral < Shape
+  def initialize
+    @@sides = 4
+    self.class.add_shape(self)
+  end
+end
+
+Triangle.sides
+Triangle.new.sides
+
+p Quadrilateral.sides # => 3
+p Quadrilateral.new.sides # => 4
+p Triangle.sides # => 4
+# What can executing `Triangle.sides` return? What can executing `Triangle.new.sides` return? What does this demonstrate about class variables?
+p Shape.shapes
+# Is this good class design? Nope!
