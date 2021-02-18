@@ -6,45 +6,104 @@ end
 
 module Clearable
   def clear_screen
-    system("clear") || system("cls")
+    system('clear') || system('cls')
   end
 end
 
 class Player
   attr_reader :marker
+  attr_accessor :moves, :name, :score
 
   def initialize
     @marker = Marker.new
+    @moves = []
+    @score = 0
   end
 end
 
 class Computer < Player
   def initialize
     super
-    @name = %w('ZingBot ClapTrap Toaster Baymax Nirvash').sample
+    @name = %w(ZingBot ClapTrap Toaster Baymax Nirvash).sample
+    marker.symbol = @name[0]
   end
 
   def pick_marker
-    marker.symbol = 'X'
-    marker.color = Marker::COLORS.keys.sample
+    marker.color = Marker.avaliable_colors.sample.to_s
+  end
+
+  def picking_avaliable_spot?(board)
+    board.avaliable_spots.include?(board.center_spot.to_s)
+  end
+
+  def opponents_moves(board)
+    (board.start - board.avaliable_spots_as_ints) - moves
+  end
+
+  def record_spot!(location)
+    @moves << location.to_i
+  end
+
+  def middle_avaliable?(board)
+    board.odd? && picking_avaliable_spot?(board)
+  end
+
+  def location_selection(board, picked_moves)
+    if middle_avaliable?(board)
+      board.center_spot
+    elsif winning_spot?(moves, board.avaliable_spots)
+      winning_spot(moves, board.avaliable_spots)
+    elsif winning_spot?(picked_moves, board.avaliable_spots)
+      winning_spot(picked_moves, board.avaliable_spots)
+    else
+      board.avaliable_spots.sample
+    end
   end
 
   def pick_spot(board)
-    location = board.avaliable_spots.sample
-
+    picked_moves = opponents_moves(board)
+    location = location_selection(board, picked_moves)
+    record_spot!(location)
     board.mark_spot(marker, location)
+  end
+
+  def avaliable_move?(arr, moves, avaliable_spots)
+    avaliable_spots.include?((arr - moves)[0].to_s)
+  end
+
+  def winning_move?(arr, moves)
+    (arr - moves).length == 1
+  end
+
+  def qualify_winning_spot?(arr, moves, spots)
+    winning_move?(arr, moves) && avaliable_move?(arr, moves, spots)
+  end
+
+  def winning_spot(curr_moves, avaliable_spots)
+    p curr_moves
+    p avaliable_spots
+    spot = TTTGame.winning_combos.select do |sub_ar|
+      qualify_winning_spot?(sub_ar, curr_moves, avaliable_spots)
+    end
+
+    (spot[0] - curr_moves)[0]
+  end
+
+  def winning_spot?(curr_moves, avaliable_spots)
+    TTTGame.winning_combos.any? do |sub_ar|
+      qualify_winning_spot?(sub_ar, curr_moves, avaliable_spots)
+    end
   end
 end
 
 class Human < Player
   include Messageable
 
-  attr_writer :name
-
   def pick_color
-    prompt "What color would you like to represent you?"
+    prompt "Next, what color do you like?"
     prompt "Please select from this list #{Marker.display_colors}."
     marker.color = valid_color
+    Marker.avaliable_colors.delete(marker.color)
   end
 
   def pick_name
@@ -55,7 +114,21 @@ class Human < Player
   def pick_marker
     prompt "Pick a letter or symbol to represent you!"
     marker.symbol = valid_marker
-  end 
+  end
+
+  def pick_spot(board)
+    input = nil
+    loop do
+      prompt "Choose an avaliable spot."
+      input = gets.chomp
+      break if board.avaliable_spots.include?(input)
+      prompt "Sorry that isn't an avaliable spot."
+    end
+    @moves << input.to_i
+    board.mark_spot(marker, input)
+  end
+
+  private
 
   def valid_name
     loop do
@@ -68,56 +141,89 @@ class Human < Player
   def valid_marker
     loop do
       input = gets.chomp
-      break input unless input.length != 1 || input.squeeze == " " || ('0'..'9').to_a.include?(input)
-      prompt "Please pick a letter or symbol" #Maybe use ord values and make an array of vaild characters
+      break input unless input.length != 1 ||
+                         input.squeeze == " " ||
+                         ('0'..'9').to_a.include?(input)
+      prompt "Please pick a letter or symbol"
     end
   end
 
   def valid_color
     loop do
       input = gets.chomp.downcase
-      break input if Marker::COLORS.keys.include?(input.to_sym)
-      prompt "Please pick an avaliable color: #{Marker.display_colors}"
+      break input if marker_includes?(input)
+      if match_first_letter?(input)
+        break select_first_letter(input)
+      end
+      color_not_valid_message
     end
   end
 
-  def pick_spot(board)
-    input = nil
-    loop do
-      prompt "Choose an avaliable spot."
-      input = gets.chomp
-      break if board.avaliable_spots.include?(input)
-      prompt "Sorry that isn't an avaliable spot."
-    end
+  def marker_includes?(input)
+    Marker.avaliable_colors.include?(input.to_sym)
+  end
 
-    board.mark_spot(marker, input)
+  def match_first_letter?(input)
+    Marker.avaliable_colors.map { |sym| sym.to_s[0] }.include?(input.downcase)
+  end
+
+  def select_first_letter(input)
+    Marker.avaliable_colors.select do |sym|
+      sym.to_s.start_with?(input.downcase)
+    end[0]
+  end
+
+  def color_not_valid_message
+    prompt "Please select a color: #{Marker.avaliable_colors.join(', ')}"
   end
 end
 
 class Board
   include Clearable
 
-  def initialize(num)
-    @length = num
-    @layout = []
+  attr_reader :length
 
-    num.times do 
+  def initialize(num = 3)
+    @length = num
+    self.layout = length
+  end
+
+  def layout=(num)
+    @layout = []
+    add_empty_sub_arrays(num)
+    fill_empty_array_with_numbers
+    self.length = num unless num == length
+  end
+
+  def add_empty_sub_arrays(num)
+    num.times do
       @layout << Array.new(num)
     end
+  end
 
+  def fill_empty_array_with_numbers
     count = 1
-
     @layout.map! do |sub_ar|
-      sub_ar.map! do |ele|
+      sub_ar.map! do |_|
         ele = count
         count += 1
-        (0..9).include?(ele) ? "#{ele} " : ele.to_s
+        format_as_string(ele)
       end
     end
   end
 
+  def format_as_string(ele)
+    (0..9).include?(ele) ? "#{ele} " : ele.to_s
+  end
+
   def avaliable_spots
-    @layout.flatten.select { |ele| ele.to_i.to_s == ele.strip }.map! { |ele| ele.to_i.to_s }
+    spots = @layout.flatten
+    spots.select! { |ele| ele.to_i.to_s == ele.strip }
+    spots.map! { |ele| ele.to_i.to_s }
+  end
+
+  def avaliable_spots_as_ints
+    avaliable_spots.map(&:to_i)
   end
 
   def mark_spot(mark, location)
@@ -128,10 +234,47 @@ class Board
     end
   end
 
+  def odd?
+    length.odd?
+  end
+
+  def center_spot
+    ((length**2) / 2) + 1
+  end
+
+  def start
+    Array(1..length**2)
+  end
+
+  def to_s
+    clear_screen
+    display
+    ""
+  end
+
+  private
+
+  attr_reader :layout
+
+  def display
+    puts
+    (@length - 1).times do |index|
+      blank_marked_blank_rows(index)
+      puts dashed_row
+    end
+    blank_marked_blank_rows(@length - 1)
+  end
+
+  def blank_marked_blank_rows(size)
+    puts blank_row
+    puts marked_row(size)
+    puts blank_row
+  end
+
   def blank_row
     str = ''
     (@length - 1).times do
-      str << (' ' * 7) + '|'
+      str << "#{' ' * 7}|"
     end
     str << (' ' * 7)
   end
@@ -146,37 +289,11 @@ class Board
     str = ''
     index = 0
     (@length - 1).times do
-      str << (' ' * 3) + @layout[row_num][index].to_s + (' ' * 2) + '|'
+      str << "#{' ' * 3}#{@layout[row_num][index]}#{' ' * 2}|"
       index += 1
     end
     str << (' ' * 3) + @layout[row_num][index].to_s + (' ' * 2)
   end
-
-  def winning_row?
-    @layout.any? do |sub_ar|
-      sub_ar.all? do |ele|
-        Marker === ele && ele.symbol == sub_ar[0].symbol
-      end
-    end
-  end
-
-  def to_s
-    clear_screen
-    puts
-    (@length - 1).times do |index|
-      puts blank_row
-      puts marked_row(index)
-      puts blank_row
-      puts dashed_row
-    end
-    puts blank_row
-    puts marked_row(@length - 1)
-    puts blank_row
-    puts
-  end
-
-  private
-  attr_reader :layout
 end
 
 class Marker
@@ -188,8 +305,14 @@ class Marker
              magenta: 35,
              cyan: 36 }
 
+  @@avaliable_colors = COLORS.keys
+
+  def self.avaliable_colors
+    @@avaliable_colors
+  end
+
   def self.display_colors
-    COLORS.keys.join(", ")
+    avaliable_colors.join(", ")
   end
 
   def color=(v)
@@ -205,7 +328,7 @@ class Marker
   end
 
   def to_i
-    "0"
+    0
   end
 
   def strip
@@ -217,54 +340,247 @@ class TTTGame
   include Messageable
   include Clearable
 
-  attr_reader :human, :computer, :board
+  @@winning_combos = []
+
+  def self.winning_combos
+    @@winning_combos
+  end
 
   def initialize
     @human = Human.new
     @computer = Computer.new
+    @current_player = human
   end
 
+  # Too many lines
   def play
     display_welcome_message
+    create_winning_combos
+    game_play
+    display_goodbye_message
+  end
+
+  private
+
+  attr_reader :human, :computer
+  attr_accessor :board
+
+  def game_play
     loop do
-      loop do
-        board.to_s
-        human.pick_spot(board)
-        board.to_s
-        computer.pick_spot(board)
-        board.to_s
-        # break if winning_mark?
-        break if board.winning_row? #add the other win conditions
-      end
-      board.to_s
+      play_set
       display_winner
       break unless play_again?
     end
-    display_goodbye_message
+  end
+
+  def play_set
+    loop do
+      reset
+      play_round
+      puts board
+      display_round_winner
+      update_scores
+      display_scores
+      break if human.score == 5 || computer.score == 5
+      continue
+    end
+  end
+
+  def play_round
+    loop do
+      current_player_moves
+      break if won? || tie?
+    end
+  end
+
+  def continue
+    prompt "Press any button to continue."
+    gets.chomp
+  end
+
+  def current_player_moves
+    puts board
+    @current_player.pick_spot(board)
+    @current_player = @current_player == human ? computer : human
+    puts board
+  end
+
+  def reset
+    board.layout = board.length
+    human.moves = []
+    computer.moves = []
+    @winner = false
   end
 
   def display_welcome_message
     clear_screen
     prompt "Welcome to Tic-Tac-Toe!"
+    prompt "First player to 5 points wins!"
+    set_preferences
+  end
+
+  def set_preferences
     human.pick_name
-    human.pick_marker
+    introduce_rival
     human.pick_color
-    computer.pick_marker #Temp values
+    computer.pick_marker
     display_rules
   end
 
-  def display_rules # Add validation at some point
+  def rival_marker_selection
+    "#{computer.name} selected the letter #{computer.marker}to represent them."
+  end
+
+  def introduce_rival
+    prompt "Hello #{human.name}. You'll be facing off against #{computer.name}."
+    prompt rival_marker_selection
+    human.pick_marker
+  end
+
+  def display_rules
     clear_screen
     prompt "A normal game of Tic-Tac-Toe is played on a 3x3 board."
-    prompt "The first person to get 3 in a row wins."
-    prompt "Would you like to play with normal rules or pick a custom board size?"
-    input = gets.chomp
-    if input == "normal" || input == "n"
-      @board = Board.new(3)
-    elsif input == "custom" || input == "c"
-      prompt "What size would you like the board? Pick a number between 3 & 8."
-      size = gets.chomp.to_i
-      @board = Board.new(size)
+    prompt "The first person to get 3 in a row gets a point."
+    prompt "Play with (n)ormal rules or pick a (c)ustom board size?"
+    self.board = valid_option
+  end
+
+  def valid_option
+    loop do
+      input = gets.chomp
+      break Board.new if input == "normal" || input == "n"
+      if input == "custom" || input == "c"
+        prompt "What size would you like the board? Pick between 3 & 6."
+        break Board.new(valid_board_size)
+      end
+      prompt "Please pick (n)ormal or (c)ustom."
+    end
+  end
+
+  def valid_board_size
+    loop do
+      input = gets.chomp.to_i
+      break input if (3..6).to_a.include?(input)
+      prompt "Please select a number between 3 and 6."
+    end
+  end
+
+  def display_round_winner
+    if @winner == human
+      prompt "#{human.name} got a point!"
+    elsif @winner == computer
+      prompt "#{computer.name} got a point!"
+    else
+      prompt "It was a tie!"
+    end
+  end
+
+  def display_winner
+    if human.score == 5
+      prompt "#{human.name} won!"
+    else
+      prompt "#{computer.name} won, better luck next time."
+    end
+  end
+
+  def update_scores
+    if @winner == human
+      human.score += 1
+    elsif @winner == computer
+      computer.score += 1
+    end
+  end
+
+  def vs_display
+    "#{human.name}: #{human.score} vs #{computer.name}: #{computer.score}."
+  end
+
+  def display_scores
+    prompt "Current Score:"
+    prompt vs_display
+  end
+
+  def display_goodbye_message
+    clear_screen
+    prompt "Thank you for playing! I hope to see you again #{human.name}!"
+  end
+
+  def won?
+    @@winning_combos.any? do |sub_ar|
+      if sub_ar - human.moves == []
+        @winner = human
+      elsif sub_ar - computer.moves == []
+        @winner = computer
+      end
+    end
+  end
+
+  def tie?
+    board.avaliable_spots.empty?
+  end
+
+  def play_again?
+    input = nil
+    loop do
+      prompt "Would you like to play best of 5 again?"
+      input = gets.chomp.downcase
+      break if ['y', 'n', 'yes', 'no'].include?(input)
+      prompt "Please choose (y)es or (n)o."
+    end
+    input[0] == 'y'
+  end
+
+  def create_winning_combos
+    winning_columns
+    winning_rows
+    winning_diags
+  end
+
+  def winning_columns
+    board.length.times do |index|
+      counter = index + 1
+      sub_ar = [counter]
+      until sub_ar.length == board.length
+        counter += board.length
+        sub_ar << counter
+      end
+      @@winning_combos << sub_ar
+    end
+  end
+
+  def winning_rows
+    counter = 1
+
+    until counter >= (board.length * board.length)
+      sub_ar = [counter]
+      until sub_ar.length == board.length
+        counter += 1
+        sub_ar << counter
+      end
+      counter += 1
+      @@winning_combos << sub_ar
+    end
+  end
+
+  def winning_diags
+    plus = true
+    [1, board.length].each do |ele|
+      adding_diag_sub_ars(ele, plus)
+      plus = false
+    end
+  end
+
+  def adding_diag_sub_ars(ele, plus)
+    sub_ar = [ele]
+    adding_diag_sub_ar_elements(sub_ar, ele, plus)
+    @@winning_combos << sub_ar
+  end
+
+  def adding_diag_sub_ar_elements(sub_ar, ele, plus)
+    until sub_ar.length == board.length
+      ele += (board.length + 1) if plus
+      ele += (board.length - 1) unless plus
+      sub_ar << ele
     end
   end
 end

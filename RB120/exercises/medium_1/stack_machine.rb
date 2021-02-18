@@ -23,68 +23,63 @@
 
 # Examples:
 
-class InvalidToken < StandardError
-
-end
-
+class EmptyStackError < StandardError; end
+class InvalidToken < StandardError; end
+  
 class Minilang
-  attr_accessor :register
-  attr_reader :commands
+  attr_accessor :register, :stack
   
-  COMMANDS = %w(PRINT PUSH MULT ADD POP DIV MOD SUB)
-  
-  def initialize(commands)
-    @commands = commands.split
-    self.register = 0
+  def initialize(program)
+    @register = 0
+    @program = program.split
     @stack = []
   end
   
   def eval
-    commands.each do |string|
-      if string =~ /[0-9]/
-        self.register = string.to_i
-      elsif COMMANDS.include?(string)
-        self.send string.downcase.to_sym
+    @program.each do |command|
+      if command.to_i.to_s == command
+        @register = command.to_i
+      elsif !(self.class.instance_methods.include?(command.downcase.to_sym))
+        raise InvalidToken, "Invalid token: #{command}"
       else
-        raise InvalidToken, string
+        send(command.downcase) 
       end
     end
   end
   
   def print
-    puts register
+    puts @register
   end
   
   def push
-    @stack << register
+    stack << register
   end
   
   def mult
-    self.register *= @stack.pop
+    self.register *= stack.pop
   end
   
   def add
-    self.register += @stack.pop
+    self.register += stack.pop
   end
   
   def pop
-    raise SystemStackError, "Empty stack!" if @stack.empty?
+    raise EmptyStackError, "Empty stack!" if stack.empty?
     
-    self.register = @stack.pop
+    self.register = stack.pop
   end
   
   def div
-    self.register /= @stack.pop
+    self.register /= stack.pop
   end
   
-  def mod
-    self.register %= @stack.pop
+  def mod 
+    self.register %= stack.pop
   end
   
   def sub
-    self.register -= @stack.pop
-  end
-  
+    self.register -= stack.pop
+  end  
 end
 
 
