@@ -11,7 +11,9 @@ p bob.name
 
 # What is output and why? What does this demonstrate about instance variables that differentiates them from local variables?
 
-# The output of line 10 is `nil` because on line 2 the `attr_reader` method creates a getter method for the `@name` instance variable. On line 10 the `name` getter method returns the `@name` instance variable which has not been initialized and so returns `nil`. When local variables are not initialized they throw an error while instance variables will return `nil`.
+# The output of line 10 is `nil` because on line 2 the `attr_reader` method creates a getter method for the `@name` instance variable. 
+# On line 10 the `name` getter method returns the `@name` instance variable which has not been initialized and so returns `nil`. 
+# When local variables are not initialized they throw an error while instance variables will return `nil`.
 
 module Swimmable
   def enable_swimming

@@ -37,10 +37,10 @@ class Computer < Player
   end
 
   def pick_spot(board)
-    picked_moves = opponents_moves(board)
-    location = location_selection(board, picked_moves)
-    record_spot!(location)
-    board.mark_spot(marker, location)
+    unavailable_spots = opponents_moves(board)
+    optimal_spot = calculate_optimal_spot(board, unavailable_spots)
+    record_spot!(optimal_spot)
+    board.mark_spot(marker, optimal_spot)
   end
 
   private
@@ -53,24 +53,44 @@ class Computer < Player
     (board.start - board.avaliable_spots_as_ints) - moves
   end
 
-  def record_spot!(location)
-    @moves << location.to_i
+  def record_spot!(spot)
+    @moves << spot.to_i
   end
 
   def middle_avaliable?(board)
     board.odd? && picking_avaliable_spot?(board)
   end
 
-  def location_selection(board, picked_moves)
+  def calculate_optimal_spot(board, picked_moves)
     if middle_avaliable?(board)
-      board.center_spot
+      choose_middle_spot(board)
     elsif winning_spot?(moves, board.avaliable_spots)
-      winning_spot(moves, board.avaliable_spots)
-    elsif winning_spot?(picked_moves, board.avaliable_spots)
-      winning_spot(picked_moves, board.avaliable_spots)
+      choose_winning_spot(board)
+    elsif defensive_spot?(picked_moves, board)
+      choose_defensive_spot(picked_moves, board)
     else
-      board.avaliable_spots.sample
+      choose_random_spot(board)
     end
+  end
+
+  def defensive_spot?(moves, board)
+    winning_spot?(moves, board.avaliable_spots)
+  end
+
+  def choose_winning_spot(board)
+    winning_spot(moves, board.avaliable_spots)
+  end
+
+  def choose_defensive_spot(picked_moves, board)
+    winning_spot(picked_moves, board.avaliable_spots)
+  end
+
+  def choose_middle_spot(board)
+    board.center_spot
+  end
+
+  def choose_random_spot(board)
+    board.avaliable_spots.sample
   end
 
   def avaliable_move?(arr, moves, avaliable_spots)
@@ -263,13 +283,13 @@ class Board
   def display
     puts
     (@length - 1).times do |index|
-      blank_marked_blank_rows(index)
+      display_blank_marked_blank_rows(index)
       puts dashed_row
     end
-    blank_marked_blank_rows(@length - 1)
+    display_blank_marked_blank_rows(@length - 1)
   end
 
-  def blank_marked_blank_rows(size)
+  def display_blank_marked_blank_rows(size)
     puts blank_row
     puts marked_row(size)
     puts blank_row
@@ -344,6 +364,8 @@ class TTTGame
   include Messageable
   include Clearable
 
+  WINNING_POINTS = 5
+
   @@winning_combos = []
 
   def self.winning_combos
@@ -373,17 +395,16 @@ class TTTGame
   def display_welcome_message
     clear_screen
     prompt "Welcome to Tic-Tac-Toe!"
-    prompt "First player to 5 points wins!"
+    prompt "First player to #{WINNING_POINTS} points wins!"
     set_preferences
   end
 
-  def introduce_rival
+  def display_introduce_rival
     prompt "Hello #{human.name}. You'll be facing off against #{computer.name}."
-    prompt rival_marker_selection
-    human.pick_marker
+    prompt display_rival_marker_selection
   end
 
-  def rival_marker_selection
+  def display_rival_marker_selection
     "#{computer.name} selected the letter #{computer.marker}to represent them."
   end
 
@@ -407,20 +428,20 @@ class TTTGame
 
   def display_scores
     prompt "Current Score:"
-    prompt vs_display
+    prompt display_verses
   end
 
-  def vs_display
+  def display_verses
     "#{human.name}: #{human.score} vs #{computer.name}: #{computer.score}."
   end
 
-  def continue
+  def display_continue
     prompt "Press any button to continue."
     gets.chomp
   end
 
   def display_winner
-    if human.score == 5
+    if human.score == WINNING_POINTS
       prompt "#{human.name} won!"
     else
       prompt "#{computer.name} won, better luck next time."
@@ -436,7 +457,8 @@ class TTTGame
 
   def set_preferences
     human.pick_name
-    introduce_rival
+    display_introduce_rival
+    human.pick_marker
     human.pick_color
     computer.pick_marker
     display_rules
@@ -534,8 +556,8 @@ class TTTGame
       display_round_winner
       update_scores
       display_scores
-      break if human.score == 5 || computer.score == 5
-      continue
+      break if human.score == WINNING_POINTS || computer.score == WINNING_POINTS
+      display_continue
     end
   end
 
@@ -585,7 +607,7 @@ class TTTGame
   def play_again?
     input = nil
     loop do
-      prompt "Would you like to play best of 5 again?"
+      prompt "Would you like to play best to #{WINNING_POINTS} again?"
       input = gets.chomp.downcase
       break if ['y', 'n', 'yes', 'no'].include?(input)
       prompt "Please choose (y)es or (n)o."
