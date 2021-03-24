@@ -39,6 +39,11 @@ p teddy.swim
 
 # Instance variables that have not been initialized yet return `nil` (vs local variables which raise an exception when they have not been initialized). The `Swimmable` module is mixed into the `Dog` class successfully so `Dog` objects inherit the `enable_swimming` instance method, but this method must be invoked in order to initialize the `@can_swim` instance variable.
 
+# The output is `nil` because on line 17 we output the return value of invoking the `swim` method on the instance `teddy`. 
+# The `swim` method is defined on lines 11 - 13. On line 12 a conditional statement is called evaluating `@can_swim`. 
+# At this point `@can_swim` is not initialize and so evaluates to false for the if statement. 
+# This demonstrates that uninitialized instance variables can be referenced and will not throw an error (unlike local variables), instead they return `nil`.
+
 
 module Describable
   def describe_shape
@@ -72,7 +77,9 @@ p Square.new.describe_shape
 
 # On line 26 `4` is output
 # On line 27 `4` is output
-# On line 28 an error is thrown because `SIDES` looks in the lexical scope where `SIDES` is referenced which is lines 2 to 6 for a value for the `SIDES` constant which is not defined. If we didn't want to raise an error we would have to use the namespace resolution operator to find the location of a defined `SIDES` constant, such as Quadrilateral::SIDES.
+# On line 28 an error is thrown because `SIDES` looks in the lexical scope where `SIDES` is referenced which is lines 2 to 6 for a value for the `SIDES` 
+# constant which is not defined. If we didn't want to raise an error we would have to use the namespace resolution operator to find the location of a defined 
+# `SIDES` constant, such as Quadrilateral::SIDES.
 
 # In the `describe_shape` method `self` is refering to the instance that called the method.
 # In the `self.sides` method `self` is refering to the class.
@@ -123,7 +130,9 @@ puts some_animal_classes.animals
 
 # The output of `line 38` is an array of `Animal` objects, the combined arrays of `@animals` from the  `birds` and `mammals` AnimalClass objects.
 
-# The `AnimalClass#+` method is implemented on lines 13-15 and principally utilizes the `Array#+` method to concatenate the two `@animal` arrays together. This is not what we'd expect from this kind of `#+` method, since most built-in classes return a new object of the same type from the `#+` method. So in this case, we'd be in line with expectations if we return from `AnimalClass#+` a new `AnimalClass` object containing the @animals from both caller and argument.
+# The `AnimalClass#+` method is implemented on lines 13-15 and principally utilizes the `Array#+` method to concatenate the two `@animal` arrays together. 
+# This is not what we'd expect from this kind of `#+` method, since most built-in classes return a new object of the same type from the `#+` method. 
+# So in this case, we'd be in line with expectations if we return from `AnimalClass#+` a new `AnimalClass` object containing the @animals from both caller and argument.
 
 # New implementation of `AnimalClass#+`:
 
@@ -201,7 +210,9 @@ p bob.name
 # In the code above, we hope to output `'BOB'` on `line 16`. Instead, we raise an error. Why? How could we adjust this code to output `'BOB'`?
 
 =begin
-On `line 9` within the `change_name` method, the `name=` setter method is incorrectly invoked. Since there is no `self.` prefix, Ruby reads this line as local variable `name` being initialized to itself calling the `upcase` method. Since local variable `name` has no value yet and is set to `nil`, `upcase` is invoked on `nil` which is why we see the exception raised.
+On `line 9` within the `change_name` method, the `name=` setter method is incorrectly invoked. Since there is no `self.` 
+prefix, Ruby reads this line as local variable `name` being initialized to itself calling the `upcase` method. 
+Since local variable `name` has no value yet and is set to `nil`, `upcase` is invoked on `nil` which is why we see the exception raised.
 
 To adjust and output `'BOB'`, we need to call the setter `name=` on self.
 
